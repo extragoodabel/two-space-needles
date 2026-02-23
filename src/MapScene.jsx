@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { setOptions, importLibrary } from "@googlemaps/js-api-loader";
 
+/** Real Space Needle, Seattle Center (400 Broad St) — single source of truth for map center and default needle. */
 const SEATTLE_CENTER = { lat: 47.6205, lng: -122.3493, altitude: 0 };
-const ORIGINAL_NEEDLE_POSITION = { lat: SEATTLE_CENTER.lat, lng: SEATTLE_CENTER.lng, altitude: SEATTLE_CENTER.altitude ?? 0 };
+const ORIGINAL_NEEDLE_POSITION = { lat: 47.6205, lng: -122.3493, altitude: 0 };
 
 /** Default map view: oblique aerial, Belltown/water behind needle, Seattle Center in front. */
 const DEFAULT_TILT = 67;
@@ -12,11 +13,35 @@ const DEFAULT_RANGE = 900;
 // Footprint ~400 ft radius (SPEC). In meters for polygon radius.
 const FOOTPRINT_RADIUS_M = 122;
 const CIRCLE_POINTS = 32;
+/** Set true to log pointer->latLng and nearest.d in console for hover debugging. */
+const DEBUG_HOVER = false;
 /** Radius (m) of the 3D glow at the needle base when it's the hint target. Same "node" as the needle. */
 const HINT_GLOW_RADIUS_M = 20;
 
-// Model path per SPEC (combined needle + base). Add public/models/space-needle-park.glb to test.
+// Model paths: default (set in place), blue-tinted (placing / moving / highlighted), permanent original at Seattle Center.
 const GHOST_MODEL_SRC = "/models/space-needle-park.glb";
+const HIGHLIGHT_MODEL_SRC = "/models/low_poly_space_needle.glb";
+/** Permanent original Space Needle at Seattle Center — original GLB model. */
+const ORIGINAL_NEEDLE_MODEL_SRC = GHOST_MODEL_SRC;
+/** Altitude offset (m) for original needle so it aligns with footprint; tune if the GLB origin is not at the base. */
+const ORIGINAL_NEEDLE_ALTITUDE_OFFSET_M = 0;
+
+/** Third-party asset credits (single source of truth). Fill in creator, license, sourceUrl, notes. */
+const CREDITS = [
+  { category: "3D Model", name: "Space Needle (default)", creator: "—", license: "—", sourceUrl: "", notes: "space-needle-park.glb" },
+  { category: "3D Model", name: "Space Needle (highlight)", creator: "—", license: "—", sourceUrl: "", notes: "low_poly_space_needle.glb" },
+  { category: "Sound", name: "crunch", creator: "—", license: "—", sourceUrl: "", notes: "crunch.mp3" },
+  { category: "Sound", name: "glass smash", creator: "—", license: "—", sourceUrl: "", notes: "glass-smash.mp3" },
+  { category: "Sound", name: "splash", creator: "—", license: "—", sourceUrl: "", notes: "splash.mp3" },
+  { category: "Sound", name: "dog bark", creator: "—", license: "—", sourceUrl: "", notes: "dog-bark.mp3" },
+  { category: "Sound", name: "baseball organ", creator: "—", license: "—", sourceUrl: "", notes: "baseball-organ.mp3" },
+  { category: "Sound", name: "crowd stomp", creator: "—", license: "—", sourceUrl: "", notes: "crowd-stomp.mp3" },
+  { category: "Sound", name: "air horn", creator: "—", license: "—", sourceUrl: "", notes: "air-horn.mp3" },
+  { category: "Sound", name: "wilhelm", creator: "—", license: "—", sourceUrl: "", notes: "wilhelm.mp3" },
+  { category: "Sound", name: "poof", creator: "—", license: "—", sourceUrl: "", notes: "poof.mp3" },
+  { category: "Sound", name: "move", creator: "—", license: "—", sourceUrl: "", notes: "move.mp3" },
+  { category: "Sound", name: "visit", creator: "—", license: "—", sourceUrl: "", notes: "visit.mp3" },
+];
 
 const NEEDLE_SCALE = 3.5 * (7 / 8);
 
@@ -29,7 +54,7 @@ const VISIT_RANGE_M = 200;
 // Valuation uses a larger "parcel" than the literal model base (land assembly).
 const NEEDLE_BASE_RADIUS_M = 60;
 const NEEDLE_BASE_AREA_SQFT = Math.PI * NEEDLE_BASE_RADIUS_M ** 2 * 10.7639;
-const NEEDLE_BUILD_COST = 100_000_000;
+const NEEDLE_BUILD_COST = 350_000_000;
 /** Projected additional tourism revenue: range 0.6B–1.4B in city (diminishes with distance); outside city <0.5B. */
 const TOURISM_REVENUE_MIN_B = 0.6;
 const TOURISM_REVENUE_MAX_B = 1.4;
@@ -45,30 +70,80 @@ const SQFT_PER_ACRE = 43560;
 const NEEDLE_PARCEL_ACRES = 1.75;
 const NEEDLE_PARCEL_SQFT = NEEDLE_PARCEL_ACRES * SQFT_PER_ACRE; // 76,230
 
-/** Known water bodies — kept inside water (pulled back from shores) to avoid splash on land. Used when elevation is null. */
+/** Point-in-polygon (ray casting east). Polygon = array of [lat, lng]. Cast ray at lat; count crossings to the right of lng. */
+function pointInPolygon(lat, lng, polygon) {
+  const n = polygon.length;
+  if (n < 3) return false;
+  let inside = false;
+  for (let i = 0, j = n - 1; i < n; j = i++) {
+    const [latI, lngI] = polygon[i];
+    const [latJ, lngJ] = polygon[j];
+    if (latI === latJ) continue;
+    const crossesHorizontal = (latI > lat) !== (latJ > lat);
+    const lngCross = lngI + (lngJ - lngI) * (lat - latI) / (latJ - latI);
+    if (crossesHorizontal && lngCross > lng) inside = !inside;
+  }
+  return inside;
+}
+
+/** Seattle neighborhood boundaries (GeoJSON). Land inside any neighborhood = crunch. Source: seattleio/seattle-boundaries-data. */
+const SEATTLE_NEIGHBORHOODS_GEOJSON_URL =
+  "https://raw.githubusercontent.com/seattleio/seattle-boundaries-data/master/data/neighborhoods.geojson";
+
+/** Cached list of neighborhood polygons for point-in-polygon. Each polygon = array of [lat, lng] (from GeoJSON [lng, lat]). */
+let seattleNeighborhoodPolygons = null;
+
+function extractPolygonsFromGeoJSON(featureCollection) {
+  if (!featureCollection?.features?.length) return [];
+  const polygons = [];
+  for (const f of featureCollection.features) {
+    const g = f.geometry;
+    if (!g?.coordinates) continue;
+    if (g.type === "Polygon") {
+      const ring = g.coordinates[0].map(([lng, lat]) => [lat, lng]);
+      if (ring.length >= 3) polygons.push(ring);
+    } else if (g.type === "MultiPolygon") {
+      for (const ring of g.coordinates.map((c) => c[0].map(([lng, lat]) => [lat, lng]))) {
+        if (ring.length >= 3) polygons.push(ring);
+      }
+    }
+  }
+  return polygons;
+}
+
+function isInSeattleNeighborhood(lat, lng) {
+  if (!seattleNeighborhoodPolygons?.length) return false;
+  return seattleNeighborhoodPolygons.some((poly) => pointInPolygon(lat, lng, poly));
+}
+
+/** Water bounds (axis-aligned). Used only for points NOT inside a Seattle neighborhood; follows that land = neighborhoods. */
 const WATER_BOUNDS = [
-  { latMin: 47.542, latMax: 47.658, lngMin: -122.48, lngMax: -122.362 },   // Puget Sound / Elliott Bay (west of waterfront)
-  { latMin: 47.636, latMax: 47.646, lngMin: -122.336, lngMax: -122.320 },  // Lake Union (core, off shores)
-  { latMin: 47.552, latMax: 47.658, lngMin: -122.312, lngMax: -122.24 },   // Lake Washington (east of Seattle shore)
-  { latMin: 47.650, latMax: 47.656, lngMin: -122.314, lngMax: -122.302 },  // Union Bay (center, off Montlake)
+  { latMin: 47.53, latMax: 47.68, lngMin: -122.48, lngMax: -122.32 },   // Elliott Bay / Puget Sound (generous; land carved out by neighborhoods)
+  { latMin: 47.634, latMax: 47.648, lngMin: -122.338, lngMax: -122.318 }, // Lake Union
+  { latMin: 47.53, latMax: 47.66, lngMin: -122.318, lngMax: -122.24 },   // Lake Washington
+  { latMin: 47.648, latMax: 47.658, lngMin: -122.318, lngMax: -122.298 }, // Union Bay
 ];
-function isInKnownWaterBounds(lat, lng) {
+
+function isInWaterBounds(lat, lng) {
   return WATER_BOUNDS.some(
     (b) => lat >= b.latMin && lat <= b.latMax && lng >= b.lngMin && lng <= b.lngMax
   );
 }
-/** True if elevation indicates water (≤1m ASL) or, when elevation is null, point is inside tightened water bounds. */
+
+/** Land vs water: Seattle neighborhoods (from official GeoJSON) = land (crunch). Water bounds and not in a neighborhood = water (splash). */
 function isWaterPlacement(lat, lng, elevation) {
+  if (isInSeattleNeighborhood(lat, lng)) return false;
+  if (isInWaterBounds(lat, lng)) return true;
   if (elevation !== null && typeof elevation === "number") return elevation <= 1;
-  return isInKnownWaterBounds(lat, lng);
+  return false;
 }
 
-/** UW campus only (dog-bark drop sound); does not cross Montlake or University bridges or extend into U District. */
+/** UW campus and Husky Stadium (dog-bark drop sound); includes full stadium to the east. */
 const UW_CAMPUS_BOUNDS = {
-  latMin: 47.6508,
-  latMax: 47.6568,
-  lngMin: -122.312,
-  lngMax: -122.300,
+  latMin: 47.6498,
+  latMax: 47.6578,
+  lngMin: -122.314,
+  lngMax: -122.296,
 };
 function isOnUWCampusOrStadiums(lat, lng) {
   return (
@@ -95,12 +170,12 @@ function isAtLumenField(lat, lng) {
   );
 }
 
-/** T-Mobile Park — city block of the baseball field only (baseball-organ drop sound). */
+/** T-Mobile Park — full ballpark (baseball-organ drop sound). */
 const T_MOBILE_PARK_BOUNDS = {
-  latMin: 47.5912,
-  latMax: 47.5926,
-  lngMin: -122.3340,
-  lngMax: -122.3310,
+  latMin: 47.5906,
+  latMax: 47.5932,
+  lngMin: -122.3348,
+  lngMax: -122.3302,
 };
 function isAtTMobileParkOrAdjacent(lat, lng) {
   return (
@@ -124,6 +199,38 @@ function isAtClimatePledgeArena(lat, lng) {
     lat <= CLIMATE_PLEDGE_ARENA_BOUNDS.latMax &&
     lng >= CLIMATE_PLEDGE_ARENA_BOUNDS.lngMin &&
     lng <= CLIMATE_PLEDGE_ARENA_BOUNDS.lngMax
+  );
+}
+
+/** MoPop (Museum of Pop Culture) building footprint only — glass-smash drop sound. */
+const MOPOP_BOUNDS = {
+  latMin: 47.62115,
+  latMax: 47.62163,
+  lngMin: -122.34835,
+  lngMax: -122.34777,
+};
+function isAtMoPop(lat, lng) {
+  return (
+    lat >= MOPOP_BOUNDS.latMin &&
+    lat <= MOPOP_BOUNDS.latMax &&
+    lng >= MOPOP_BOUNDS.lngMin &&
+    lng <= MOPOP_BOUNDS.lngMax
+  );
+}
+
+/** Chihuly Garden and Glass building footprint only — glass-smash drop sound. */
+const CHIHULY_BOUNDS = {
+  latMin: 47.61995,
+  latMax: 47.62055,
+  lngMin: -122.3510,
+  lngMax: -122.3504,
+};
+function isAtChihuly(lat, lng) {
+  return (
+    lat >= CHIHULY_BOUNDS.latMin &&
+    lat <= CHIHULY_BOUNDS.latMax &&
+    lng >= CHIHULY_BOUNDS.lngMin &&
+    lng <= CHIHULY_BOUNDS.lngMax
   );
 }
 
@@ -253,6 +360,39 @@ function latLngToWrapperPixelWithProjection(mapEl, wrapperEl, latLng, overlayRef
   return latLngToContainerPixel(mapEl, wrapperRect, latLng);
 }
 
+/**
+ * Convert pointer (clientX/clientY) to lat/lng using OverlayView projection.
+ * Pixel frame is the inner map div only; wrapper is not used (use fallback for approximate math).
+ * Returns { lat, lng, altitude: 0 } or null.
+ */
+function wrapperPixelToLatLngWithProjection(mapEl, clientX, clientY, overlayRef) {
+  if (!mapEl) return null;
+  const innerMap = mapEl.innerMap;
+  const overlay = overlayRef?.current;
+  const proj = overlay?.getProjection?.();
+  if (!innerMap || !proj || typeof google === "undefined" || !google.maps?.Point) return null;
+
+  const mapDiv = innerMap.getDiv?.();
+  if (!mapDiv) return null;
+
+  const mapDivRect = mapDiv.getBoundingClientRect();
+  const px = clientX - mapDivRect.left;
+  const py = clientY - mapDivRect.top;
+
+  if (px < 0 || px > mapDivRect.width || py < 0 || py > mapDivRect.height) return null;
+
+  try {
+    const pt = new google.maps.Point(px, py);
+    const ll =
+      (typeof proj.fromContainerPixelToLatLng === "function" && proj.fromContainerPixelToLatLng(pt)) ||
+      (typeof proj.fromDivPixelToLatLng === "function" && proj.fromDivPixelToLatLng(pt));
+    if (!ll) return null;
+    return { lat: ll.lat(), lng: ll.lng(), altitude: 0 };
+  } catch {
+    return null;
+  }
+}
+
 /** Fallback: wrapper-local pixels from approximate inverse math only. */
 function latLngToWrapperPixel(mapEl, wrapperEl, latLng) {
   if (!mapEl || !wrapperEl || !latLng) return null;
@@ -357,6 +497,14 @@ function formatCurrency(n) {
   return `$${n.toFixed(0)}`;
 }
 
+/** Format as $X.XB/year for tourism revenue. */
+function formatCurrencyPerYear(n) {
+  if (n >= 1e9) return `$${(n / 1e9).toFixed(1)}B/year`;
+  if (n >= 1e6) return `$${(n / 1e6).toFixed(1)}M/year`;
+  if (n >= 1e3) return `$${(n / 1e3).toFixed(1)}K/year`;
+  return `$${n.toFixed(1)}/year`;
+}
+
 function formatRate(ratePerSqFt) {
   return `$${Math.round(ratePerSqFt)}/sqft`;
 }
@@ -401,7 +549,7 @@ function useCountUp(target, options = {}) {
 
 /**
  * Get ground elevation in meters at a point (for water detection).
- * Returns null if unavailable. Used together with isInKnownWaterBounds for splash (water) detection.
+ * Returns null if unavailable. Used with neighborhood (land) and water bounds for splash vs crunch.
  */
 async function getElevationAt(lat, lng) {
   try {
@@ -511,13 +659,15 @@ export default function MapScene() {
   const [menuAnchorXY, setMenuAnchorXY] = useState(null);
   const [hintPosition, setHintPosition] = useState(null);
   const [anchorsVersion, setAnchorsVersion] = useState(0);
+  const [creditsOpen, setCreditsOpen] = useState(false);
 
   const needleAnchorsRef = useRef(new Map());
 
-  const countUpNeedles = useCountUp(placements.length);
-  const countUpAcres = useCountUp(placements.length * NEEDLE_PARCEL_ACRES);
+  const totalNeedles = 1 + placements.length;
+  const countUpNeedles = useCountUp(totalNeedles);
+  const countUpAcres = useCountUp(totalNeedles * NEEDLE_PARCEL_ACRES);
   const countUpCost = useCountUp(
-    placements.length * NEEDLE_BUILD_COST + placements.reduce((sum, p) => sum + (p.landValue ?? 0), 0)
+    totalNeedles * NEEDLE_BUILD_COST + placements.reduce((sum, p) => sum + (p.landValue ?? 0), 0)
   );
   const totalTourismRevenue = placements.reduce(
     (sum, p) => sum + (p.tourismRevenue ?? computeTourismRevenue(p.lat, p.lng)),
@@ -533,7 +683,9 @@ export default function MapScene() {
   const ghostModelRef = useRef(null);
   const footprintRef = useRef(null);
   const hintGlowRef = useRef(null);
+  const footprintHighlightRef = useRef(null);
   const crunchAudioRef = useRef(null);
+  const glassSmashAudioRef = useRef(null);
   const splashAudioRef = useRef(null);
   const dogBarkAudioRef = useRef(null);
   const baseballOrganAudioRef = useRef(null);
@@ -548,8 +700,13 @@ export default function MapScene() {
   const placedModelsRef = useRef(new Map());
   const nextPlacementIdRef = useRef(1);
   const hoverLatLngRef = useRef(null);
+  const hoveredNeedleIdRef = useRef(null);
   const projectionOverlayRef = useRef(null);
   const projectionReadyRef = useRef(false);
+
+  useEffect(() => {
+    hoveredNeedleIdRef.current = hoveredNeedleId;
+  }, [hoveredNeedleId]);
 
   useEffect(() => {
     ensureMapLoaded()
@@ -558,6 +715,16 @@ export default function MapScene() {
         console.error(err);
         setMapError(err?.message || String(err));
       });
+  }, []);
+
+  // Authoritative land/water: load Seattle neighborhood boundaries (land = crunch; water = not in any neighborhood)
+  useEffect(() => {
+    fetch(SEATTLE_NEIGHBORHOODS_GEOJSON_URL)
+      .then((r) => r.json())
+      .then((fc) => {
+        seattleNeighborhoodPolygons = extractPolygonsFromGeoJSON(fc);
+      })
+      .catch((err) => console.warn("Seattle neighborhoods GeoJSON load failed, using water bounds only:", err));
   }, []);
 
   useEffect(() => {
@@ -614,27 +781,33 @@ export default function MapScene() {
         const { Model3DElement, Polygon3DElement } = lib;
         if (Model3DElement) {
           modelClassRef.current = Model3DElement;
-          const ghost = new Model3DElement({
-            src: GHOST_MODEL_SRC,
-            position: SEATTLE_CENTER,
-            scale: NEEDLE_SCALE,
-            orientation: { tilt: 270 },
-          });
-          ghostModelRef.current = ghost;
 
-          // Permanent Original Space Needle at Seattle Center: create once, never update position.
+          // Permanent original Space Needle at real coordinates (47.6205, -122.3493). Append first so it stays anchored.
           if (originalNeedleRef.current) {
             if (!mapEl.contains(originalNeedleRef.current)) mapEl.appendChild(originalNeedleRef.current);
           } else {
             const originalNeedle = new Model3DElement({
-              src: GHOST_MODEL_SRC,
-              position: ORIGINAL_NEEDLE_POSITION,
+              src: ORIGINAL_NEEDLE_MODEL_SRC,
+              position: {
+                lat: ORIGINAL_NEEDLE_POSITION.lat,
+                lng: ORIGINAL_NEEDLE_POSITION.lng,
+                altitude: (ORIGINAL_NEEDLE_POSITION.altitude ?? 0) + ORIGINAL_NEEDLE_ALTITUDE_OFFSET_M,
+              },
               scale: NEEDLE_SCALE,
               orientation: { tilt: 270 },
             });
             originalNeedleRef.current = originalNeedle;
             mapEl.appendChild(originalNeedle);
           }
+
+          const ghost = new Model3DElement({
+            src: HIGHLIGHT_MODEL_SRC,
+            position: SEATTLE_CENTER,
+            scale: NEEDLE_SCALE,
+            orientation: { tilt: 270 },
+          });
+          ghostModelRef.current = ghost;
+          mapEl.appendChild(ghost);
         } else {
           console.warn("Model3DElement not in maps3d library (try v=alpha). Ghost model disabled.");
         }
@@ -660,6 +833,14 @@ export default function MapScene() {
             altitudeMode: "RELATIVE_TO_GROUND",
           });
           hintGlowRef.current = hintGlow;
+          const footprintHighlight = new Polygon3DElement({
+            path: circleCoordinates(SEATTLE_CENTER.lat, SEATTLE_CENTER.lng, FOOTPRINT_RADIUS_M, CIRCLE_POINTS),
+            fillColor: "rgba(124, 179, 66, 0.45)",
+            strokeColor: "rgba(85, 139, 47, 1)",
+            strokeWidth: 3,
+            altitudeMode: "RELATIVE_TO_GROUND",
+          });
+          footprintHighlightRef.current = footprintHighlight;
         } else {
           console.warn("Polygon3DElement missing; footprint disabled.");
         }
@@ -670,7 +851,7 @@ export default function MapScene() {
     })();
   }, [mapSteady, overlayReady]);
 
-  // Pointer move: open menu over needle, auto-close when pointer leaves needle/menu area.
+  // Pointer move: ghost/footprint and hint. Menu opens when cursor is inside a needle's footprint circle (lat/lng proximity).
   useEffect(() => {
     const wrapper = mapWrapperRef.current;
     const mapEl = mapRef.current;
@@ -688,20 +869,38 @@ export default function MapScene() {
         }
         return;
       }
-      const rect = wrapper.getBoundingClientRect();
-      const pos = pixelToApproxLatLng(mapEl, rect, e.clientX, e.clientY);
+      let pos = wrapperPixelToLatLngWithProjection(mapEl, e.clientX, e.clientY, projectionOverlayRef);
+      if (!pos) {
+        const rect = wrapper.getBoundingClientRect();
+        pos = pixelToApproxLatLng(mapEl, rect, e.clientX, e.clientY);
+      }
       hoverLatLngRef.current = pos;
       setHoverLatLng(pos);
       if (!isPlacing && !movingNeedleId && !visitMode) {
-        let hit = path.find((node) => node?.dataset?.needleId);
-        if (!hit) hit = atPoint.find((node) => node?.dataset?.needleId);
-        if (hit) {
-          setHoveredNeedleId(Number(hit.dataset.needleId));
-        } else if (!overMenu) {
+        if (overMenu) {
+          /* keep current hoveredNeedleId so menu stays open while pointer is on menu */
+        } else if (pos && placementsRef.current?.length) {
+          const nearest = placementsRef.current.reduce(
+            (best, p) => {
+              const d = distanceMeters(pos, { lat: p.lat, lng: p.lng });
+              return d < best.d ? { id: p.id, d } : best;
+            },
+            { id: null, d: Infinity }
+          );
+          if (DEBUG_HOVER && nearest.id != null) {
+            console.log("hover pos", pos.lat.toFixed(6), pos.lng.toFixed(6), "nearest.d(m)", nearest.d.toFixed(1), "inside?", nearest.d < FOOTPRINT_RADIUS_M);
+          }
+          if (nearest.id != null && nearest.d < FOOTPRINT_RADIUS_M) {
+            setHoveredNeedleId(nearest.id);
+          } else {
+            setHoveredNeedleId(null);
+            setMenuAnchorXY(null);
+          }
+        } else {
           setHoveredNeedleId(null);
           setMenuAnchorXY(null);
         }
-        if (hoveredNeedleId == null && pos) {
+        if (hoveredNeedleIdRef.current == null && pos) {
           const list = placementsRef.current;
           if (list?.length) {
             const nearest = list.reduce(
@@ -839,6 +1038,13 @@ export default function MapScene() {
     setMenuAnchorXY(hoveredNeedleId != null ? needleAnchorsRef.current.get(hoveredNeedleId) ?? null : null);
   }, [hoveredNeedleId]);
 
+  useEffect(() => {
+    if (!creditsOpen) return;
+    const onKey = (e) => { if (e.key === "Escape") setCreditsOpen(false); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [creditsOpen]);
+
   // OverlayView projection helper (when Map3DElement exposes innerMap). Uses getProjection().fromLatLngToContainerPixel.
   useEffect(() => {
     if (!mapSteady || !mapRef.current) return;
@@ -871,8 +1077,11 @@ export default function MapScene() {
     if (!wrapper || !mapEl || !overlayReady) return;
     const onClick = async (e) => {
       if (!isClickOnMapSurface(e)) return;
-      const rect = wrapper.getBoundingClientRect();
-      const atFromClick = pixelToApproxLatLng(mapEl, rect, e.clientX, e.clientY);
+      let atFromClick = wrapperPixelToLatLngWithProjection(mapEl, e.clientX, e.clientY, projectionOverlayRef);
+      if (!atFromClick) {
+        const rect = wrapper.getBoundingClientRect();
+        atFromClick = pixelToApproxLatLng(mapEl, rect, e.clientX, e.clientY);
+      }
       const at = atFromClick ?? hoverLatLngRef.current;
       if (!at) return;
 
@@ -880,12 +1089,12 @@ export default function MapScene() {
         const elevation = await getElevationAt(at.lat, at.lng);
         const isWater = isWaterPlacement(at.lat, at.lng, elevation);
         if (soundEnabled) {
-          if (isWater) {
-            const splashEl = splashAudioRef.current;
-            if (splashEl) {
-              splashEl.volume = 0.9;
-              splashEl.currentTime = 0;
-              splashEl.play().catch((err) => console.error("audio play failed", err));
+          if (isOnUWCampusOrStadiums(at.lat, at.lng)) {
+            const dogEl = dogBarkAudioRef.current;
+            if (dogEl) {
+              dogEl.volume = 0.9;
+              dogEl.currentTime = 0;
+              dogEl.play().catch((err) => console.error("audio play failed", err));
             }
           } else if (isAtLumenField(at.lat, at.lng)) {
             const stompEl = crowdStompAudioRef.current;
@@ -893,13 +1102,6 @@ export default function MapScene() {
               stompEl.volume = 0.9;
               stompEl.currentTime = 0;
               stompEl.play().catch((err) => console.error("audio play failed", err));
-            }
-          } else if (isOnUWCampusOrStadiums(at.lat, at.lng)) {
-            const dogEl = dogBarkAudioRef.current;
-            if (dogEl) {
-              dogEl.volume = 0.9;
-              dogEl.currentTime = 0;
-              dogEl.play().catch((err) => console.error("audio play failed", err));
             }
           } else if (isAtTMobileParkOrAdjacent(at.lat, at.lng)) {
             const organEl = baseballOrganAudioRef.current;
@@ -914,6 +1116,20 @@ export default function MapScene() {
               hornEl.volume = 0.9;
               hornEl.currentTime = 0;
               hornEl.play().catch((err) => console.error("audio play failed", err));
+            }
+          } else if (isAtMoPop(at.lat, at.lng) || isAtChihuly(at.lat, at.lng)) {
+            const glassEl = glassSmashAudioRef.current;
+            if (glassEl) {
+              glassEl.volume = 0.9;
+              glassEl.currentTime = 0;
+              glassEl.play().catch((err) => console.error("audio play failed", err));
+            }
+          } else if (isWater) {
+            const splashEl = splashAudioRef.current;
+            if (splashEl) {
+              splashEl.volume = 0.9;
+              splashEl.currentTime = 0;
+              splashEl.play().catch((err) => console.error("audio play failed", err));
             }
           } else {
             const crunchEl = crunchAudioRef.current;
@@ -984,12 +1200,12 @@ export default function MapScene() {
       const elevation = await getElevationAt(at.lat, at.lng);
       const isWater = isWaterPlacement(at.lat, at.lng, elevation);
       if (soundEnabled) {
-        if (isWater) {
-          const splashEl = splashAudioRef.current;
-          if (splashEl) {
-            splashEl.volume = 0.9;
-            splashEl.currentTime = 0;
-            splashEl.play().catch((err) => console.error("audio play failed", err));
+        if (isOnUWCampusOrStadiums(at.lat, at.lng)) {
+          const dogEl = dogBarkAudioRef.current;
+          if (dogEl) {
+            dogEl.volume = 0.9;
+            dogEl.currentTime = 0;
+            dogEl.play().catch((err) => console.error("audio play failed", err));
           }
         } else if (isAtLumenField(at.lat, at.lng)) {
           const stompEl = crowdStompAudioRef.current;
@@ -997,13 +1213,6 @@ export default function MapScene() {
             stompEl.volume = 0.9;
             stompEl.currentTime = 0;
             stompEl.play().catch((err) => console.error("audio play failed", err));
-          }
-        } else if (isOnUWCampusOrStadiums(at.lat, at.lng)) {
-          const dogEl = dogBarkAudioRef.current;
-          if (dogEl) {
-            dogEl.volume = 0.9;
-            dogEl.currentTime = 0;
-            dogEl.play().catch((err) => console.error("audio play failed", err));
           }
         } else if (isAtTMobileParkOrAdjacent(at.lat, at.lng)) {
           const organEl = baseballOrganAudioRef.current;
@@ -1018,6 +1227,20 @@ export default function MapScene() {
             hornEl.volume = 0.9;
             hornEl.currentTime = 0;
             hornEl.play().catch((err) => console.error("audio play failed", err));
+          }
+        } else if (isAtMoPop(at.lat, at.lng) || isAtChihuly(at.lat, at.lng)) {
+          const glassEl = glassSmashAudioRef.current;
+          if (glassEl) {
+            glassEl.volume = 0.9;
+            glassEl.currentTime = 0;
+            glassEl.play().catch((err) => console.error("audio play failed", err));
+          }
+        } else if (isWater) {
+          const splashEl = splashAudioRef.current;
+          if (splashEl) {
+            splashEl.volume = 0.9;
+            splashEl.currentTime = 0;
+            splashEl.play().catch((err) => console.error("audio play failed", err));
           }
         } else {
           const crunchEl = crunchAudioRef.current;
@@ -1114,6 +1337,7 @@ export default function MapScene() {
       if (ghost) {
         ghost.position = hoverLatLng;
         if (!ghost.parentElement) mapEl.appendChild(ghost);
+        ghost.classList?.add?.("needle-model-outlined");
       }
       footprint.path = circleCoordinates(
         hoverLatLng.lat,
@@ -1123,6 +1347,7 @@ export default function MapScene() {
       );
       if (!footprint.parentElement) mapEl.appendChild(footprint);
     } else {
+      ghost?.classList?.remove?.("needle-model-outlined");
       if (ghost?.parentElement) mapEl.removeChild(ghost);
       if (footprint.parentElement) mapEl.removeChild(footprint);
     }
@@ -1143,6 +1368,36 @@ export default function MapScene() {
     }
   }, [hintNeedleId, hoveredNeedleId, isPlacing, movingNeedleId, visitMode, placements]);
 
+  // Green glowing footprint when cursor is over a needle's footprint circle; menu is for that needle.
+  useEffect(() => {
+    const mapEl = mapRef.current;
+    const highlight = footprintHighlightRef.current;
+    if (!mapEl || !highlight) return;
+    const show = hoveredNeedleId != null && !isPlacing && !movingNeedleId && !visitMode;
+    const placement = show ? placements.find((p) => p.id === hoveredNeedleId) : null;
+    if (placement) {
+      highlight.path = circleCoordinates(placement.lat, placement.lng, FOOTPRINT_RADIUS_M, CIRCLE_POINTS);
+      if (!highlight.parentElement) mapEl.appendChild(highlight);
+    } else {
+      if (highlight.parentElement) mapEl.removeChild(highlight);
+    }
+  }, [hoveredNeedleId, isPlacing, movingNeedleId, visitMode, placements]);
+
+  // Blue-tinted model and outline for the hovered needle; default model when set in place.
+  useEffect(() => {
+    const placed = placedModelsRef.current;
+    const hoveredId = hoveredNeedleId != null && !isPlacing && !movingNeedleId && !visitMode ? hoveredNeedleId : null;
+    placed.forEach((el, id) => {
+      if (!el) return;
+      const useHighlight = id === hoveredId;
+      if (el.src !== undefined) el.src = useHighlight ? HIGHLIGHT_MODEL_SRC : GHOST_MODEL_SRC;
+      if (el?.classList != null) {
+        if (useHighlight) el.classList.add("needle-model-outlined");
+        else el.classList.remove("needle-model-outlined");
+      }
+    });
+  }, [hoveredNeedleId, isPlacing, movingNeedleId, visitMode]);
+
   const showLoading = !mapLibReady || !mapSteady;
 
   const unlockAudio = () => {
@@ -1150,6 +1405,11 @@ export default function MapScene() {
     if (crunchEl) {
       crunchEl.volume = 0;
       crunchEl.play().then(() => { crunchEl.pause(); crunchEl.currentTime = 0; }).catch((err) => console.error("audio play failed", err));
+    }
+    const glassEl = glassSmashAudioRef.current;
+    if (glassEl) {
+      glassEl.volume = 0;
+      glassEl.play().then(() => { glassEl.pause(); glassEl.currentTime = 0; }).catch((err) => console.error("audio play failed", err));
     }
     const wilhelmEl = wilhelmAudioRef.current;
     if (wilhelmEl) {
@@ -1192,6 +1452,7 @@ export default function MapScene() {
     const mapEl = mapRef.current;
     const wrapper = mapWrapperRef.current;
     const placement = placements.find((p) => p.id === id);
+    const willHaveNoNeedles = placements.filter((p) => p.id !== id).length === 0;
     setPlacements((prev) => prev.filter((p) => p.id !== id));
     const el = placedModelsRef.current.get(id);
     if (el?.parentElement) el.parentElement.removeChild(el);
@@ -1203,6 +1464,7 @@ export default function MapScene() {
     }
     setHoveredNeedleId(null);
     setMenuAnchorXY(null);
+    if (willHaveNoNeedles) setIsPlacing(true);
   };
 
   const onMoveNeedle = (id) => {
@@ -1297,6 +1559,7 @@ export default function MapScene() {
   return (
     <div className="exhibit-page">
       <audio ref={crunchAudioRef} src="/audio/crunch.mp3" preload="auto" />
+      <audio ref={glassSmashAudioRef} src="/audio/glass-smash.mp3" preload="auto" />
       <audio ref={splashAudioRef} src="/audio/splash.mp3" preload="auto" />
       <audio ref={dogBarkAudioRef} src="/audio/dog-bark.mp3" preload="auto" />
       <audio ref={baseballOrganAudioRef} src="/audio/baseball-organ.mp3" preload="auto" />
@@ -1321,16 +1584,15 @@ export default function MapScene() {
         <header className="exhibit-header">
           <h1 className="exhibit-title">PLACE NEEDLES</h1>
           <p className="exhibit-subhead">
-            A civic expansion simulator by the campaign for {" "}
+            A civic expansion simulator by{" "}
             <a
               href="https://www.twospaceneedles.com"
               target="_blank"
               rel="noopener noreferrer"
               className="exhibit-header-link"
             >
-              Two Space Needles
-            </a>{" "}
-            .
+              the campaign for Two Space Needles
+            </a>.
           </p>
           <p className="exhibit-instructions">
             Click to place your new Space Needle. Observe civic impact.
@@ -1427,24 +1689,18 @@ export default function MapScene() {
                       gap: 0,
                     }}
                   >
-                    <button
-                      type="button"
-                      className="needle-action-menu-close"
-                      onClick={() => { setHoveredNeedleId(null); setMenuAnchorXY(null); }}
-                      aria-label="Close menu"
-                    >
-                      ×
-                    </button>
                     <button type="button" onClick={() => onMoveNeedle(hoveredNeedleId)}>
                       Move Needle
                     </button>
-                    <button
-                      type="button"
-                      className="exhibit-btn-destructive"
-                      onClick={() => onRemoveNeedle(hoveredNeedleId)}
-                    >
-                      Remove Needle
-                    </button>
+                    {placements.length > 1 && (
+                      <button
+                        type="button"
+                        className="exhibit-btn-destructive"
+                        onClick={() => onRemoveNeedle(hoveredNeedleId)}
+                      >
+                        Remove Needle
+                      </button>
+                    )}
                     <button type="button" onClick={() => onVisitNeedle(hoveredNeedleId)}>
                       Visit Needle
                     </button>
@@ -1514,9 +1770,9 @@ export default function MapScene() {
           <button
             type="button"
             className="exhibit-place-another"
-            disabled={placements.length < 1 || isPlacing || movingNeedleId != null}
+            disabled={(placements.length < 1 && !isPlacing) || movingNeedleId != null}
             onClick={() => {
-              if (placements.length < 1 || isPlacing || movingNeedleId != null) return;
+              if ((placements.length < 1 && !isPlacing) || movingNeedleId != null) return;
               setIsPlacing(true);
             }}
           >
@@ -1527,28 +1783,44 @@ export default function MapScene() {
           <div className="exhibit-live-estimate">
             <h3>LIVE ESTIMATE</h3>
             {(() => {
-              const hoverValuation =
+              const placingValuation =
                 isPlacing && hoverLatLng
                   ? getValuationAtLatLng(hoverLatLng.lat, hoverLatLng.lng)
+                  : null;
+              const activePlacement =
+                !isPlacing && !movingNeedleId && !visitMode && hoveredNeedleId != null
+                  ? placements.find((p) => p.id === hoveredNeedleId)
                   : null;
               return (
                 <>
                   <div className="exhibit-live-row">
                     <span className="exhibit-live-label">Neighborhood</span>
                     <span className="exhibit-live-value">
-                      {hoverValuation ? hoverValuation.neighborhoodLabel : "—"}
+                      {placingValuation
+                        ? placingValuation.neighborhoodLabel
+                        : activePlacement
+                          ? activePlacement.neighborhoodLabel
+                          : "—"}
                     </span>
                   </div>
                   <div className="exhibit-live-row">
                     <span className="exhibit-live-label">Land Acquisition</span>
                     <span className="exhibit-live-value">
-                      {hoverValuation ? formatCurrency(hoverValuation.landValue) : "—"}
+                      {placingValuation
+                        ? formatCurrency(placingValuation.landValue)
+                        : activePlacement != null && activePlacement.landValue != null
+                          ? formatCurrency(activePlacement.landValue)
+                          : "—"}
                     </span>
                   </div>
                   <div className="exhibit-live-row">
                     <span className="exhibit-live-label">Rate</span>
                     <span className="exhibit-live-value">
-                      {hoverValuation ? formatRate(hoverValuation.ratePerSqFt) : "—"}
+                      {placingValuation
+                        ? formatRate(placingValuation.ratePerSqFt)
+                        : activePlacement != null && activePlacement.ratePerSqFt != null
+                          ? formatRate(activePlacement.ratePerSqFt)
+                          : "—"}
                     </span>
                   </div>
                 </>
@@ -1568,23 +1840,72 @@ export default function MapScene() {
               </span>
             </div>
             <div className="exhibit-civic-row">
-              <span className="exhibit-civic-label">Estimated Cost</span>
+              <span className="exhibit-civic-label">Estimated Total Cost</span>
               <span className="exhibit-civic-value">
                 {formatCurrency(countUpCost)}
               </span>
             </div>
-            <p className="exhibit-civic-helper">
-              Includes land acquisition and $100M per needle.
-            </p>
             <div className="exhibit-civic-row">
-              <span className="exhibit-civic-label">Projected Additional Tourism Revenue</span>
+              <span className="exhibit-civic-label">Projected Tourism Revenue</span>
               <span className="exhibit-civic-value">
-                {formatCurrency(countUpRevenue)}
+                {formatCurrencyPerYear(countUpRevenue)}
               </span>
             </div>
           </div>
         </div>
       </div>
+      <button
+        type="button"
+        className="exhibit-credits-button"
+        onClick={() => setCreditsOpen(true)}
+        aria-label="Open credits"
+      >
+        Credits
+      </button>
+      {creditsOpen && (
+        <>
+          <div
+            className="exhibit-credits-backdrop"
+            aria-hidden
+            onClick={() => setCreditsOpen(false)}
+          />
+          <div className="exhibit-credits-modal" role="dialog" aria-labelledby="credits-title" aria-modal="true">
+            <div className="exhibit-credits-modal-inner">
+              <div className="exhibit-credits-modal-header">
+                <h2 id="credits-title" className="exhibit-credits-modal-title">Credits</h2>
+                <button
+                  type="button"
+                  className="exhibit-credits-modal-close"
+                  onClick={() => setCreditsOpen(false)}
+                  aria-label="Close credits"
+                >
+                  ×
+                </button>
+              </div>
+              <div className="exhibit-credits-modal-body">
+                {["3D Model", "Sound"].map((cat) => (
+                  <section key={cat} className="exhibit-credits-section">
+                    <h3 className="exhibit-credits-category">{cat}</h3>
+                    <ul className="exhibit-credits-list">
+                      {CREDITS.filter((c) => c.category === cat).map((c, i) => (
+                        <li key={`${cat}-${i}`} className="exhibit-credits-item">
+                          <span className="exhibit-credits-name">{c.name}</span>
+                          {c.creator && <span className="exhibit-credits-creator">{c.creator}</span>}
+                          {c.license && <span className="exhibit-credits-license">{c.license}</span>}
+                          {c.sourceUrl && (
+                            <a href={c.sourceUrl} target="_blank" rel="noopener noreferrer" className="exhibit-credits-link">Source</a>
+                          )}
+                          {c.notes && <span className="exhibit-credits-notes">{c.notes}</span>}
+                        </li>
+                      ))}
+                    </ul>
+                  </section>
+                ))}
+              </div>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }
