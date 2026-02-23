@@ -1,0 +1,626 @@
+/* 1962 Seattle World's Fair — Century 21 Exposition identity */
+/* No gradients. No shadows. No blur. Sharp corners only. */
+
+:root {
+  --fair-blue: #0D2B4F;
+  --mustard: #E0A21A;
+  --atomic-red: #B5232F;
+  --white: #FFFFFF;
+  --black: #111111;
+
+  --border-thick: 6px;
+  --header-height: 56px;
+  --footer-height: 88px;
+
+  font-family: "Inter", system-ui, sans-serif;
+  font-weight: 400;
+  line-height: 1.4;
+  color: var(--white);
+  background-color: var(--fair-blue);
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+a {
+  font-weight: 500;
+  color: var(--mustard);
+  text-decoration: none;
+}
+a:hover {
+  color: var(--white);
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+  background-color: var(--fair-blue);
+}
+
+/* Headlines: bold geometric sans, all caps, letter-spacing */
+.exhibit-headline,
+h1, .exhibit-header h1 {
+  font-family: "League Spartan", sans-serif;
+  font-weight: 700;
+  font-size: 1.25rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  line-height: 1.2;
+  margin: 0;
+  color: var(--black);
+}
+
+.exhibit-subhead {
+  font-family: "League Spartan", sans-serif;
+  font-weight: 600;
+  font-size: 0.7rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  margin: 0.25rem 0 0 0;
+  color: var(--black);
+}
+
+.exhibit-instructions {
+  font-family: "Inter", sans-serif;
+  font-size: 0.75rem;
+  font-weight: 400;
+  margin: 0.35rem 0 0 0;
+  color: var(--black);
+  line-height: 1.35;
+}
+
+/* Buttons: rectangular, sharp corners */
+button {
+  border: 2px solid var(--black);
+  border-radius: 0;
+  padding: 0.5em 1em;
+  font-size: 0.875rem;
+  font-weight: 500;
+  font-family: "Inter", sans-serif;
+  cursor: pointer;
+  transition: none;
+}
+button:hover {
+  filter: brightness(1.05);
+}
+button:focus,
+button:focus-visible {
+  outline: 2px solid var(--white);
+  outline-offset: 2px;
+}
+
+/* Primary: mustard + black text */
+.exhibit-btn-primary,
+.exhibit-place-another,
+.needle-exit-view {
+  background-color: var(--mustard);
+  color: var(--black);
+  border-color: var(--black);
+}
+
+/* Destructive: red + white text */
+.exhibit-btn-destructive {
+  background-color: var(--atomic-red);
+  color: var(--white);
+  border-color: var(--black);
+}
+
+/* ----- Page structure ----- */
+.exhibit-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--border-thick);
+  background-color: var(--fair-blue);
+}
+
+/* Panel: thick mustard border, deep blue interior */
+.exhibit-panel {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 520px;
+  min-height: 80vh;
+  border: var(--border-thick) solid var(--mustard);
+  border-radius: 0;
+  background-color: var(--fair-blue);
+  overflow: hidden;
+}
+
+/* Geometric divider line */
+.exhibit-divider {
+  height: 2px;
+  background-color: var(--mustard);
+  margin: 0;
+  border: none;
+}
+
+/* ----- Header: title > subtitle > instruction ----- */
+.exhibit-header {
+  flex-shrink: 0;
+  padding: 0.85rem 1.25rem 0.75rem;
+  background-color: var(--mustard);
+  border-bottom: 2px solid var(--black);
+}
+.exhibit-header .exhibit-title {
+  font-size: 1.35rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  margin: 0 0 0.25rem 0;
+  color: var(--black);
+}
+.exhibit-header .exhibit-subhead {
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  margin: 0;
+  color: var(--black);
+  line-height: 1.35;
+}
+.exhibit-header .exhibit-instructions {
+  font-size: 0.7rem;
+  margin: 0.35rem 0 0 0;
+  color: var(--black);
+  line-height: 1.35;
+}
+.exhibit-header-link {
+  color: var(--black);
+  font-weight: 600;
+  text-decoration: none;
+}
+.exhibit-header-link:hover {
+  text-decoration: underline;
+}
+/* ----- Viewport (map area) ----- */
+.exhibit-viewport {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 58vh;
+  max-height: 720px;
+  margin: 0;
+  padding: 0;
+  border: none;
+  border-top: 2px solid var(--mustard);
+  border-bottom: 2px solid var(--mustard);
+  background-color: var(--black);
+}
+
+.exhibit-viewport-inner {
+  position: absolute;
+  inset: 0;
+  border-radius: 0;
+  overflow: hidden;
+}
+
+.exhibit-viewport-inner.is-placing {
+  cursor: none;
+}
+
+.map-overlay {
+  pointer-events: none;
+}
+
+/* Needle UI layer: above map, only hint and menu receive pointer events */
+.needle-ui-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  pointer-events: none;
+}
+.needle-ui-overlay .needle-click-hint,
+.needle-ui-overlay .needle-action-menu {
+  pointer-events: auto;
+}
+
+/* ----- Needle UI: pulsating circle at needle (click target), press, menu ----- */
+.needle-click-hint {
+  position: relative;
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  pointer-events: auto;
+  touch-action: manipulation;
+  box-sizing: border-box;
+  contain: layout;
+}
+/* Glow is drawn in 3D at the needle's position; overlay is hit-only so click works */
+.needle-click-hint-hit-only {
+  border: none;
+  background: transparent;
+  opacity: 0;
+  animation: none;
+}
+@keyframes needle-hint-pulse {
+  0%, 100% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+  50% { transform: translate(-50%, -50%) scale(1.08); opacity: 0.9; }
+}
+
+.needle-click-press {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  border: 2px solid var(--mustard);
+  background-color: var(--mustard);
+  animation: needle-press 280ms ease-out forwards;
+}
+@keyframes needle-press {
+  0% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+  40% { transform: translate(-50%, -50%) scale(0.82); opacity: 0.95; }
+  100% { transform: translate(-50%, -50%) scale(1.1); opacity: 0; }
+}
+
+/* Menu anchored just above needle (bottom edge of menu at needle point) */
+.needle-action-menu {
+  position: relative;
+  padding: 8px 0;
+  padding-top: 28px;
+  background-color: var(--fair-blue);
+  border: 2px solid var(--mustard);
+  border-radius: 8px;
+  min-width: 140px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+}
+
+.needle-action-menu-close {
+  position: absolute;
+  top: 4px;
+  right: 6px;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.25rem;
+  line-height: 1;
+  cursor: pointer;
+  background-color: transparent;
+  border: none;
+  color: var(--white);
+  border-radius: 0;
+}
+.needle-action-menu-close:hover {
+  background-color: var(--mustard);
+  color: var(--black);
+}
+
+.needle-action-menu button:not(.needle-action-menu-close) {
+  display: block;
+  width: 100%;
+  padding: 8px 12px;
+  font-size: 0.75rem;
+  font-family: "Inter", sans-serif;
+  cursor: pointer;
+  background-color: transparent;
+  border: none;
+  border-radius: 0;
+  color: var(--white);
+  text-align: left;
+  border-bottom: 1px solid rgba(224, 162, 26, 0.3);
+}
+.needle-action-menu button:not(.needle-action-menu-close):last-of-type {
+  border-bottom: none;
+}
+.needle-action-menu button:not(.needle-action-menu-close):hover {
+  background-color: rgba(224, 162, 26, 0.2);
+  color: var(--white);
+}
+.needle-action-menu button.exhibit-btn-destructive:hover {
+  background-color: rgba(181, 35, 47, 0.4);
+  color: var(--white);
+}
+
+.needle-poof {
+  background-color: var(--white);
+  animation: needle-poof 450ms ease-out forwards;
+}
+@keyframes needle-poof {
+  0% {
+    transform: translate(-50%, -50%) scale(0.3);
+    opacity: 0.9;
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(1.2);
+    opacity: 0;
+  }
+}
+
+/* ----- Buttons section: full-width row; Erase compact, Place Needle takes rest ----- */
+.exhibit-buttons-section {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: row;
+  justify-content: stretch;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem 1.5rem;
+  margin: 0 auto;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  background-color: var(--fair-blue);
+  border-top: 2px solid var(--mustard);
+}
+.exhibit-btn-clear {
+  flex-shrink: 0;
+  background-color: #6B9DC2;
+  color: var(--white);
+  border: 2px solid var(--black);
+  border-radius: 0;
+  padding: 6px 14px;
+  font-size: 0.75rem;
+  font-family: "Inter", sans-serif;
+  cursor: pointer;
+}
+.exhibit-btn-clear:hover:not(:disabled) {
+  filter: brightness(1.08);
+}
+.exhibit-btn-clear:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+  filter: saturate(0.6);
+}
+.exhibit-btn-clear:disabled:hover,
+.exhibit-btn-clear:disabled:active {
+  filter: saturate(0.6);
+}
+
+/* ----- Data section: two columns below buttons ----- */
+.exhibit-data {
+  flex-shrink: 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  padding: 0.75rem 1.25rem;
+  background-color: var(--fair-blue);
+  border-top: 2px solid var(--mustard);
+  font-size: 0.75rem;
+  font-family: "Inter", sans-serif;
+}
+
+.exhibit-data .exhibit-live-estimate,
+.exhibit-data .exhibit-civic {
+  min-width: 0;
+}
+
+.exhibit-live-estimate {
+  margin-bottom: 0.5rem;
+  min-width: 0;
+}
+.exhibit-live-estimate h3,
+.exhibit-civic h3 {
+  font-family: "League Spartan", sans-serif;
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--mustard);
+  margin: 0 0 0.35rem 0;
+}
+
+.exhibit-live-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.5rem;
+  margin-bottom: 0.12rem;
+  line-height: 1.35;
+}
+.exhibit-live-label {
+  color: var(--white);
+  opacity: 0.9;
+  flex-shrink: 0;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.exhibit-live-value {
+  font-weight: 500;
+  color: var(--white);
+  min-width: 4.5rem;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.exhibit-civic .exhibit-civic-row {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 0.12rem;
+  line-height: 1.35;
+}
+.exhibit-civic .exhibit-civic-label {
+  color: var(--white);
+  opacity: 0.9;
+}
+.exhibit-civic .exhibit-civic-value {
+  font-weight: 500;
+  color: var(--white);
+}
+.exhibit-civic .exhibit-civic-helper {
+  margin: 0.2rem 0 0.5rem 0;
+  font-size: 0.65rem;
+  opacity: 0.75;
+  color: var(--white);
+  line-height: 1.3;
+  font-style: normal;
+  font-weight: 400;
+}
+
+/* Place another: mustard button, no gradient burst */
+.place-another-reveal {
+  position: relative;
+  display: inline-block;
+  margin-top: 0;
+}
+
+.place-another-burst {
+  display: none;
+}
+.place-another-sparkle {
+  display: none;
+}
+
+.exhibit-place-another {
+  position: relative;
+  z-index: 1;
+  flex: 1 1 0%;
+  min-width: 120px;
+  max-width: none;
+  cursor: pointer;
+  margin: 0;
+  padding: 8px 20px;
+  font-size: clamp(0.75rem, 2vw, 0.9rem);
+  font-family: "Inter", sans-serif;
+  background-color: var(--mustard);
+  color: var(--black);
+  border: 2px solid var(--black);
+  border-radius: 0;
+}
+.exhibit-place-another:hover:not(:disabled) {
+  filter: brightness(1.05);
+}
+.exhibit-place-another:active:not(:disabled) {
+  filter: brightness(0.98);
+}
+.exhibit-place-another:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+  filter: saturate(0.6);
+  background-color: var(--fair-blue);
+  color: rgba(255, 255, 255, 0.5);
+  border-color: rgba(255, 255, 255, 0.35);
+}
+.exhibit-place-another:disabled:hover,
+.exhibit-place-another:disabled:active {
+  filter: saturate(0.6);
+}
+
+/* Sound button: floating, mustard style */
+.exhibit-sound-toggle {
+  position: fixed;
+  top: 12px;
+  right: 12px;
+  z-index: 10000;
+  padding: 6px 12px;
+  font-size: 0.75rem;
+  background-color: var(--mustard);
+  color: var(--black);
+  border: 2px solid var(--black);
+  border-radius: 0;
+}
+
+/* Loading / error overlays: flat colors */
+.exhibit-loading-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--fair-blue);
+  color: var(--white);
+  font-size: 1rem;
+  z-index: 1;
+}
+
+.exhibit-error-overlay {
+  position: absolute;
+  left: 12px;
+  bottom: 12px;
+  right: 12px;
+  padding: 12px;
+  background-color: var(--black);
+  border: 2px solid var(--atomic-red);
+  color: var(--white);
+  font-size: 0.75rem;
+  border-radius: 0;
+  z-index: 2;
+  line-height: 1.4;
+}
+.exhibit-error-overlay .exhibit-error-title {
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+/* Registration marks: sharp squares (Expo-era) */
+.exhibit-registration-top-left,
+.exhibit-registration-top-right,
+.exhibit-registration-bottom-left,
+.exhibit-registration-bottom-right {
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  background-color: var(--mustard);
+  border: 1px solid var(--black);
+  z-index: 2;
+}
+.exhibit-registration-top-left { top: 14px; left: 14px; }
+.exhibit-registration-top-right { top: 14px; right: 14px; }
+.exhibit-registration-bottom-left { bottom: 14px; left: 14px; }
+.exhibit-registration-bottom-right { bottom: 14px; right: 14px; }
+
+/* ----- Desktop: full viewport immersive ----- */
+@media (min-width: 900px) {
+  .exhibit-page {
+    width: 100vw;
+    height: 100vh;
+    padding: var(--border-thick);
+    align-items: stretch;
+    justify-content: stretch;
+  }
+
+  .exhibit-panel {
+    max-width: none;
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+  }
+
+  .exhibit-viewport {
+    flex: 1 1 auto;
+    height: auto;
+    min-height: 0;
+    max-height: none;
+  }
+
+  .exhibit-header .exhibit-title {
+    font-size: 1.5rem;
+    letter-spacing: 0.12em;
+  }
+}
+
+/* Mobile: stack buttons (Place Needle on top, Erase Needles below) and data columns */
+@media (max-width: 600px) {
+  .exhibit-buttons-section {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.75rem;
+  }
+  .exhibit-btn-clear {
+    order: 2;
+  }
+  .exhibit-place-another {
+    order: 1;
+    max-width: none;
+  }
+  .exhibit-data {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (prefers-color-scheme: light) {
+  /* Keep Fair palette; no override */
+}
