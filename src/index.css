@@ -649,20 +649,20 @@ button:focus-visible {
 }
 .exhibit-credits-modal .exhibit-credits-modal-inner {
   pointer-events: auto;
-  background: var(--fair-blue);
-  border: 2px solid var(--black);
+  background: var(--mustard);
+  border: 2px solid var(--fair-blue);
   max-width: 360px;
   max-height: 80vh;
   display: flex;
   flex-direction: column;
-  box-shadow: 0 0 0 1px var(--white);
+  box-shadow: 0 0 0 1px var(--fair-blue);
 }
 .exhibit-credits-modal-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 10px 12px;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.2);
+  border-bottom: 1px solid rgba(13, 43, 79, 0.25);
   flex-shrink: 0;
 }
 .exhibit-credits-modal-title {
@@ -672,27 +672,55 @@ button:focus-visible {
   letter-spacing: 0.08em;
   text-transform: uppercase;
   margin: 0;
-  color: var(--black);
+  color: var(--fair-blue);
 }
 .exhibit-credits-modal-close {
   padding: 2px 8px;
   font-size: 1.1rem;
   line-height: 1;
   background: transparent;
-  border: 1px solid var(--black);
-  color: var(--black);
+  border: 1px solid var(--fair-blue);
+  color: var(--fair-blue);
   cursor: pointer;
 }
 .exhibit-credits-modal-close:hover {
-  background: var(--black);
-  color: var(--white);
+  background: var(--fair-blue);
+  color: var(--mustard);
 }
 .exhibit-credits-modal-body {
   overflow-y: auto;
   padding: 12px;
+  color: var(--black);
+}
+.exhibit-credits-intro {
+  margin: 0 0 10px 0;
+  font-size: 0.85rem;
+  color: var(--black);
+  line-height: 1.4;
+}
+.exhibit-credits-eg-link {
+  font-weight: 600;
+  color: var(--fair-blue);
+  text-decoration: underline;
+}
+.exhibit-credits-eg-link:hover {
+  color: var(--black);
+}
+.exhibit-credits-eg-logo-wrap {
+  margin-bottom: 14px;
+}
+.exhibit-credits-eg-logo {
+  display: block;
+  width: 100%;
+  height: auto;
 }
 .exhibit-credits-section {
   margin: 0 0 14px 0;
+  padding-top: 10px;
+  border-top: 1px solid rgba(13, 43, 79, 0.35);
+}
+.exhibit-credits-section:first-of-type {
+  padding-top: 10px;
 }
 .exhibit-credits-section:last-child {
   margin-bottom: 0;
@@ -704,7 +732,7 @@ button:focus-visible {
   letter-spacing: 0.08em;
   text-transform: uppercase;
   margin: 0 0 6px 0;
-  color: var(--mustard);
+  color: var(--fair-blue);
 }
 .exhibit-credits-list {
   list-style: none;
@@ -715,7 +743,7 @@ button:focus-visible {
   font-size: 0.75rem;
   color: var(--black);
   padding: 4px 0;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.15);
   display: flex;
   flex-direction: column;
   gap: 2px;
@@ -725,14 +753,19 @@ button:focus-visible {
 }
 .exhibit-credits-name {
   font-weight: 600;
+  color: var(--black);
 }
 .exhibit-credits-creator,
 .exhibit-credits-license,
 .exhibit-credits-notes {
   font-size: 0.7rem;
   color: var(--black);
-  opacity: 0.85;
+  opacity: 0.9;
 }
 .exhibit-credits-link {
   font-size: 0.7rem;
+  color: var(--fair-blue);
+}
+.exhibit-credits-link:hover {
+  color: var(--black);
 }

@@ -26,21 +26,20 @@ const ORIGINAL_NEEDLE_MODEL_SRC = GHOST_MODEL_SRC;
 /** Altitude offset (m) for original needle so it aligns with footprint; tune if the GLB origin is not at the base. */
 const ORIGINAL_NEEDLE_ALTITUDE_OFFSET_M = 0;
 
-/** Third-party asset credits (single source of truth). Fill in creator, license, sourceUrl, notes. */
+/** Third-party asset credits. Sources: Pixabay, Freesound, Sketchfab. */
 const CREDITS = [
-  { category: "3D Model", name: "Space Needle (default)", creator: "—", license: "—", sourceUrl: "", notes: "space-needle-park.glb" },
-  { category: "3D Model", name: "Space Needle (highlight)", creator: "—", license: "—", sourceUrl: "", notes: "low_poly_space_needle.glb" },
-  { category: "Sound", name: "crunch", creator: "—", license: "—", sourceUrl: "", notes: "crunch.mp3" },
-  { category: "Sound", name: "glass smash", creator: "—", license: "—", sourceUrl: "", notes: "glass-smash.mp3" },
-  { category: "Sound", name: "splash", creator: "—", license: "—", sourceUrl: "", notes: "splash.mp3" },
-  { category: "Sound", name: "dog bark", creator: "—", license: "—", sourceUrl: "", notes: "dog-bark.mp3" },
-  { category: "Sound", name: "baseball organ", creator: "—", license: "—", sourceUrl: "", notes: "baseball-organ.mp3" },
-  { category: "Sound", name: "crowd stomp", creator: "—", license: "—", sourceUrl: "", notes: "crowd-stomp.mp3" },
-  { category: "Sound", name: "air horn", creator: "—", license: "—", sourceUrl: "", notes: "air-horn.mp3" },
-  { category: "Sound", name: "wilhelm", creator: "—", license: "—", sourceUrl: "", notes: "wilhelm.mp3" },
-  { category: "Sound", name: "poof", creator: "—", license: "—", sourceUrl: "", notes: "poof.mp3" },
-  { category: "Sound", name: "move", creator: "—", license: "—", sourceUrl: "", notes: "move.mp3" },
-  { category: "Sound", name: "visit", creator: "—", license: "—", sourceUrl: "", notes: "visit.mp3" },
+  { category: "3D Model", name: "Space Needle", creator: "Microsoft", license: "Sketchfab", sourceUrl: "", notes: "space-needle (default)" },
+  { category: "3D Model", name: "Low Poly Space Needle", creator: "Mejje mobile coffee", license: "Sketchfab", sourceUrl: "", notes: "low_poly_space_needle.glb" },
+  { category: "Sound", name: "Dog Bark", creator: "Dragon Studio", license: "Pixabay", sourceUrl: "", notes: "Free Dog Bark" },
+  { category: "Sound", name: "Crowd Stomp", creator: "Djart music", license: "Pixabay", sourceUrl: "", notes: "Powerful Stomps Claps Cheering (Sport Rhythmic Applause)" },
+  { category: "Sound", name: "Baseball organ", creator: "Freesound Community", license: "Freesound", sourceUrl: "", notes: "baseball cavalry sting short sustain 80564" },
+  { category: "Sound", name: "Musical saw hit", creator: "Freesound Community", license: "Freesound", sourceUrl: "", notes: "81382" },
+  { category: "Sound", name: "Crunch", creator: "Freesound Community", license: "Freesound", sourceUrl: "", notes: "plastic crunch 83779" },
+  { category: "Sound", name: "Poof", creator: "Freesound Community", license: "Freesound", sourceUrl: "", notes: "poof of smoke 87381" },
+  { category: "Sound", name: "Splash", creator: "Freesound Community", license: "Freesound", sourceUrl: "", notes: "6213" },
+  { category: "Sound", name: "Wilhelm", creator: "Freesound Community", license: "Freesound", sourceUrl: "", notes: "wilhelm 1 86895" },
+  { category: "Sound", name: "Glass smash", creator: "Freesound Community", license: "Freesound", sourceUrl: "", notes: "6266" },
+  { category: "Sound", name: "Camera", creator: "Irinairinafomicheva", license: "Freesound", sourceUrl: "", notes: "13695" },
 ];
 
 const NEEDLE_SCALE = 3.5 * (7 / 8);
@@ -202,12 +201,12 @@ function isAtClimatePledgeArena(lat, lng) {
   );
 }
 
-/** MoPop (Museum of Pop Culture) building footprint only — glass-smash drop sound. */
+/** MoPop (Museum of Pop Culture) — glass-smash drop sound; bounds expanded to cover full building. */
 const MOPOP_BOUNDS = {
-  latMin: 47.62115,
-  latMax: 47.62163,
-  lngMin: -122.34835,
-  lngMax: -122.34777,
+  latMin: 47.62105,
+  latMax: 47.62173,
+  lngMin: -122.34845,
+  lngMax: -122.34767,
 };
 function isAtMoPop(lat, lng) {
   return (
@@ -1883,9 +1882,22 @@ export default function MapScene() {
                 </button>
               </div>
               <div className="exhibit-credits-modal-body">
-                {["3D Model", "Sound"].map((cat) => (
+                <p className="exhibit-credits-intro">
+                  Place Needles is an{" "}
+                  <a href="https://www.extragood.studio" target="_blank" rel="noopener noreferrer" className="exhibit-credits-eg-link">
+                    Extra Good Studio
+                  </a>{" "}
+                  production.
+                </p>
+                <div className="exhibit-credits-eg-logo-wrap">
+                  <img src="/eg_logo.png" alt="Extra Good Studio" className="exhibit-credits-eg-logo" />
+                </div>
+                {[
+                  ["3D Model", "3D Model Sources"],
+                  ["Sound", "Sound Sources"],
+                ].map(([cat, label]) => (
                   <section key={cat} className="exhibit-credits-section">
-                    <h3 className="exhibit-credits-category">{cat}</h3>
+                    <h3 className="exhibit-credits-category">{label}</h3>
                     <ul className="exhibit-credits-list">
                       {CREDITS.filter((c) => c.category === cat).map((c, i) => (
                         <li key={`${cat}-${i}`} className="exhibit-credits-item">
