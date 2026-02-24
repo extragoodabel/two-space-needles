@@ -1,9 +1,12 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { setOptions, importLibrary } from "@googlemaps/js-api-loader";
+import * as THREE from "three";
 
 /** Real Space Needle, Seattle Center (400 Broad St) — single source of truth for map center and default needle. */
 const SEATTLE_CENTER = { lat: 47.6205, lng: -122.3493, altitude: 0 };
 const ORIGINAL_NEEDLE_POSITION = { lat: 47.6205, lng: -122.3493, altitude: 0 };
+/** Sentinel id for the original needle (used for menu/data box when it is highlighted). */
+const ORIGINAL_NEEDLE_ID = 0;
 
 /** Default map view: oblique aerial, Belltown/water behind needle, Seattle Center in front. */
 const DEFAULT_TILT = 67;
@@ -217,12 +220,12 @@ function isAtMoPop(lat, lng) {
   );
 }
 
-/** Chihuly Garden and Glass building footprint only — glass-smash drop sound. */
+/** Chihuly Garden and Glass — glass-smash drop sound; small footprint close to building. */
 const CHIHULY_BOUNDS = {
-  latMin: 47.61995,
-  latMax: 47.62055,
-  lngMin: -122.3510,
-  lngMax: -122.3504,
+  latMin: 47.61998,
+  latMax: 47.62048,
+  lngMin: -122.35095,
+  lngMax: -122.35048,
 };
 function isAtChihuly(lat, lng) {
   return (
@@ -230,6 +233,22 @@ function isAtChihuly(lat, lng) {
     lat <= CHIHULY_BOUNDS.latMax &&
     lng >= CHIHULY_BOUNDS.lngMin &&
     lng <= CHIHULY_BOUNDS.lngMax
+  );
+}
+
+/** Pacific Science Center — glass-smash drop sound; small footprint close to building. */
+const PACIFIC_SCIENCE_CENTER_BOUNDS = {
+  latMin: 47.61928,
+  latMax: 47.61968,
+  lngMin: -122.35108,
+  lngMax: -122.35052,
+};
+function isAtPacificScienceCenter(lat, lng) {
+  return (
+    lat >= PACIFIC_SCIENCE_CENTER_BOUNDS.latMin &&
+    lat <= PACIFIC_SCIENCE_CENTER_BOUNDS.latMax &&
+    lng >= PACIFIC_SCIENCE_CENTER_BOUNDS.lngMin &&
+    lng <= PACIFIC_SCIENCE_CENTER_BOUNDS.lngMax
   );
 }
 
@@ -491,7 +510,7 @@ function getValuationAtLatLng(lat, lng) {
 
 function formatCurrency(n) {
   if (n >= 1e9) return `$${(n / 1e9).toFixed(1)}B`;
-  if (n >= 1e6) return `$${(n / 1e6).toFixed(0)}M`;
+  if (n >= 1e6) return `$${(n / 1e6).toFixed(1)}M`;
   if (n >= 1e3) return `$${(n / 1e3).toFixed(0)}K`;
   return `$${n.toFixed(0)}`;
 }
@@ -506,6 +525,147 @@ function formatCurrencyPerYear(n) {
 
 function formatRate(ratePerSqFt) {
   return `$${Math.round(ratePerSqFt)}/sqft`;
+}
+
+/** Format lat/lng with degree symbol and N/S, E/W. Optional separator (default ", "; use " · " for postcard style). */
+function formatLatLngDirectional(lat, lng, separator = ", ") {
+  const la = Number(lat);
+  const lo = Number(lng);
+  const latDir = la >= 0 ? "N" : "S";
+  const lngDir = lo >= 0 ? "E" : "W";
+  const latStr = `${Math.abs(la).toFixed(5)}° ${latDir}`;
+  const lngStr = `${Math.abs(lo).toFixed(5)}° ${lngDir}`;
+  return `${latStr}${separator}${lngStr}`;
+}
+
+function formatCoordLabel(lat, lng) {
+  const latDir = lat >= 0 ? "N" : "S";
+  const lngDir = lng >= 0 ? "E" : "W";
+  return `${Math.abs(Number(lat)).toFixed(5)}° ${latDir}, ${Math.abs(Number(lng)).toFixed(5)}° ${lngDir}`;
+}
+
+function loadImage(src) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => resolve(img);
+    img.onerror = reject;
+    img.src = src;
+  });
+}
+
+async function downloadPostcardJpg(polaroid) {
+  if (!polaroid?.dataUrl) return;
+
+  const [img, logoImg] = await Promise.all([
+    loadImage(polaroid.dataUrl),
+    loadImage("/eg_logo_postcard.png").catch(() => null),
+  ]);
+
+  const W = 1600;
+  const H = 1200;
+
+  const canvas = document.createElement("canvas");
+  canvas.width = W;
+  canvas.height = H;
+  const ctx = canvas.getContext("2d");
+
+  const bg = "#f6f4ef";
+  const white = "#ffffff";
+  const ink = "#111111";
+  const muted = "rgba(17,17,17,0.75)";
+
+  const margin = 70;
+  const infoBlockH = 220;
+  const framePad = 24;
+
+  const frameX = margin;
+  const frameY = margin;
+  const frameW = W - margin * 2;
+  const frameH = H - margin * 2 - infoBlockH;
+
+  const photoX = frameX + framePad;
+  const photoY = frameY + framePad;
+  const photoW = frameW - framePad * 2;
+  const photoH = frameH - framePad * 2;
+
+  ctx.fillStyle = bg;
+  ctx.fillRect(0, 0, W, H);
+
+  ctx.fillStyle = white;
+  ctx.fillRect(frameX, frameY, frameW, frameH);
+
+  const imgAR = img.width / img.height;
+  const boxAR = photoW / photoH;
+
+  let sx = 0; let sy = 0; let sw = img.width; let sh = img.height;
+
+  if (imgAR > boxAR) {
+    sh = img.height;
+    sw = sh * boxAR;
+    sx = (img.width - sw) / 2;
+    sy = 0;
+  } else {
+    sw = img.width;
+    sh = sw / boxAR;
+    sx = 0;
+    sy = (img.height - sh) / 2;
+  }
+
+  ctx.drawImage(img, sx, sy, sw, sh, photoX, photoY, photoW, photoH);
+
+  const blockX = margin;
+  const blockY = frameY + frameH;
+  const blockW = frameW;
+  const blockH = infoBlockH;
+
+  ctx.fillStyle = white;
+  ctx.fillRect(blockX, blockY, blockW, blockH);
+
+  const needleNum = polaroid.needleNumber ?? polaroid.needleId ?? "";
+  const coord = formatCoordLabel(polaroid.lat ?? 0, polaroid.lng ?? 0);
+
+  const leftX = blockX + 34;
+  const rightX = blockX + blockW - 34;
+  const topLineY = blockY + 72;
+
+  ctx.fillStyle = ink;
+  ctx.font = "600 34px system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial";
+  ctx.textBaseline = "alphabetic";
+  ctx.textAlign = "left";
+  ctx.fillText(`Greetings from Space Needle #${needleNum}`, leftX, topLineY);
+
+  ctx.fillStyle = muted;
+  ctx.font = "500 26px system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial";
+  ctx.fillText(coord, leftX, topLineY + 40);
+
+  ctx.fillStyle = ink;
+  ctx.font = "600 24px system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial";
+  ctx.fillText("twospaceneedles.org | @twospaceneedles", leftX, blockY + blockH - 44);
+
+  ctx.textAlign = "right";
+  if (logoImg && logoImg.width > 0 && logoImg.height > 0) {
+    const logoH = 48;
+    const logoW = (logoImg.width / logoImg.height) * logoH;
+    ctx.drawImage(logoImg, rightX - logoW, topLineY - logoH, logoW, logoH);
+  } else {
+    ctx.fillStyle = ink;
+    ctx.font = "800 30px system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial";
+    ctx.fillText("EXTRA GOOD", rightX, topLineY);
+  }
+
+  ctx.fillStyle = muted;
+  ctx.font = "600 24px system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial";
+  ctx.fillText("extragood.studio | @extragood.studio", rightX, blockY + blockH - 44);
+
+  const jpgUrl = canvas.toDataURL("image/jpeg", 0.92);
+
+  const a = document.createElement("a");
+  a.href = jpgUrl;
+  a.download = `two-space-needles-postcard-needle-${needleNum}.jpg`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
 }
 
 /** Animate a number from current value to target over duration ms. Returns current value. */
@@ -575,6 +735,165 @@ function bearingDegrees(a, b) {
   const y = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLon);
   const bearing = (Math.atan2(x, y) * 180) / Math.PI;
   return (bearing + 360) % 360;
+}
+
+/** Smallest angle difference in degrees between two headings (0–360). */
+function smallestAngleDiff(a, b) {
+  let d = Math.abs((a % 360) - (b % 360));
+  if (d > 180) d = 360 - d;
+  return d;
+}
+
+/**
+ * Generate an instant placeholder polaroid image using an offscreen Three.js scene.
+ * Scene: sky gradient (fog), ground, simple city silhouettes, two Space Needle proxies.
+ * Visited needle at origin; original needle placed by bearing/distance (scaled down).
+ * Returns PNG data URL. Optional vignette applied for camera aesthetic.
+ */
+function generatePlaceholderPolaroid(metadata, width = 1200, height = 900) {
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color(0xb8d4e8);
+  const fogNear = 80;
+  const fogFar = 320;
+  scene.fog = new THREE.Fog(0xcccccc, fogNear, fogFar);
+
+  const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 500);
+  const visitedLat = metadata.visitedLat ?? 47.62;
+  const visitedLng = metadata.visitedLng ?? -122.35;
+  const originalLat = metadata.originalLat ?? 47.6205;
+  const originalLng = metadata.originalLng ?? -122.3493;
+  const headingDeg = metadata.cameraHeading ?? 0;
+  const bearingRad = ((360 - headingDeg) * Math.PI) / 180;
+  const scaleDown = 0.12;
+  const maxScaledDist = 120;
+  const visibleNeedles = metadata.visibleNeedles ?? [];
+  const hasVisibleList = visibleNeedles.length > 0;
+
+  const ambient = new THREE.AmbientLight(0xffffff, 0.55);
+  scene.add(ambient);
+  const sun = new THREE.DirectionalLight(0xfff5e6, 0.85);
+  sun.position.set(80, 120, 60);
+  sun.castShadow = false;
+  scene.add(sun);
+
+  const groundGeo = new THREE.PlaneGeometry(400, 400);
+  const groundMat = new THREE.MeshLambertMaterial({ color: 0x7a9e7e });
+  const ground = new THREE.Mesh(groundGeo, groundMat);
+  ground.rotation.x = -Math.PI / 2;
+  ground.position.y = -0.5;
+  scene.add(ground);
+
+  const boxGeo = new THREE.BoxGeometry(1, 1, 1);
+  const cityMat = new THREE.MeshLambertMaterial({ color: 0x4a5568 });
+  for (let i = 0; i < 18; i++) {
+    const x = (i % 6 - 2.5) * 45 + (i % 3) * 8;
+    const z = -90 - Math.floor(i / 6) * 35 - (i % 2) * 15;
+    const h = 8 + (i % 4) * 6;
+    const g = new THREE.BoxGeometry(12, h, 10);
+    const m = new THREE.Mesh(g, cityMat);
+    m.position.set(x, h / 2, z);
+    scene.add(m);
+  }
+  const towerGeo = new THREE.BoxGeometry(14, 42, 12);
+  const tower = new THREE.Mesh(towerGeo, cityMat);
+  tower.position.set(55, 21, -140);
+  scene.add(tower);
+  const tower2 = new THREE.Mesh(towerGeo.clone(), cityMat);
+  tower2.position.set(-50, 21, -130);
+  scene.add(tower2);
+
+  function makeNeedleMesh(color = 0x2c5282) {
+    const group = new THREE.Group();
+    const shaftGeo = new THREE.CylinderGeometry(1.2, 2.2, 28, 8);
+    const shaftMat = new THREE.MeshLambertMaterial({ color });
+    const shaft = new THREE.Mesh(shaftGeo, shaftMat);
+    shaft.position.y = 14;
+    group.add(shaft);
+    const saucerGeo = new THREE.CylinderGeometry(4.5, 4.8, 1.2, 16);
+    const saucerMat = new THREE.MeshLambertMaterial({ color: 0xe2e8f0 });
+    const saucer = new THREE.Mesh(saucerGeo, saucerMat);
+    saucer.position.y = 28.6;
+    group.add(saucer);
+    const rimGeo = new THREE.TorusGeometry(5, 0.4, 8, 24);
+    const rimMat = new THREE.MeshLambertMaterial({ color: 0xcbd5e0 });
+    const rim = new THREE.Mesh(rimGeo, rimMat);
+    rim.rotation.x = Math.PI / 2;
+    rim.position.y = 29.2;
+    group.add(rim);
+    const spireGeo = new THREE.CylinderGeometry(0.15, 0.2, 6, 6);
+    const spireMat = new THREE.MeshLambertMaterial({ color: 0x4a5568 });
+    const spire = new THREE.Mesh(spireGeo, spireMat);
+    spire.position.y = 31.2;
+    group.add(spire);
+    return group;
+  }
+
+  const needleColors = [0x2c5282, 0x1e4d6b, 0x2563a8, 0x1e3a5f, 0x334d6b, 0x2d4a6e];
+  if (hasVisibleList) {
+    visibleNeedles.forEach((entry, i) => {
+      const needleMesh = makeNeedleMesh(needleColors[i % needleColors.length]);
+      if (i === 0) {
+        needleMesh.position.set(0, 0, 0);
+      } else {
+        const distScaled = Math.min(maxScaledDist, (entry.distanceMeters ?? 0) * scaleDown);
+        const br = ((entry.bearingDeg ?? 0) * Math.PI) / 180;
+        needleMesh.position.set(Math.sin(br) * distScaled, 0, Math.cos(br) * distScaled);
+      }
+      scene.add(needleMesh);
+    });
+  } else {
+    const distM = typeof distanceMeters === "function"
+      ? distanceMeters({ lat: visitedLat, lng: visitedLng }, { lat: originalLat, lng: originalLng })
+      : 500;
+    const backDist = Math.min(maxScaledDist, distM * scaleDown);
+    const backX = Math.sin(bearingRad) * backDist;
+    const backZ = Math.cos(bearingRad) * backDist;
+    const visitedNeedle = makeNeedleMesh(0x2c5282);
+    visitedNeedle.position.set(0, 0, 0);
+    scene.add(visitedNeedle);
+    const originalNeedle = makeNeedleMesh(0x1e4d6b);
+    originalNeedle.position.set(backX, 0, backZ);
+    scene.add(originalNeedle);
+  }
+
+  const camDist = 75;
+  camera.position.set(
+    Math.sin(bearingRad) * camDist + 8,
+    32,
+    Math.cos(bearingRad) * camDist + 5
+  );
+  camera.lookAt(0, 18, 0);
+  camera.updateProjectionMatrix();
+
+  const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, preserveDrawingBuffer: true });
+  renderer.setSize(width, height);
+  renderer.setClearColor(0xb8d4e8);
+  renderer.render(scene, camera);
+
+  let dataUrl = renderer.domElement.toDataURL("image/png");
+
+  const vignetteCanvas = document.createElement("canvas");
+  vignetteCanvas.width = width;
+  vignetteCanvas.height = height;
+  const vctx = vignetteCanvas.getContext("2d");
+  if (vctx) {
+    vctx.drawImage(renderer.domElement, 0, 0);
+    const grad = vctx.createRadialGradient(width / 2, height / 2, width * 0.2, width / 2, height / 2, width * 0.75);
+    grad.addColorStop(0, "rgba(255,255,255,0)");
+    grad.addColorStop(0.6, "rgba(200,200,200,0.15)");
+    grad.addColorStop(1, "rgba(80,80,80,0.4)");
+    vctx.globalCompositeOperation = "multiply";
+    vctx.fillStyle = grad;
+    vctx.fillRect(0, 0, width, height);
+    dataUrl = vignetteCanvas.toDataURL("image/png");
+  }
+
+  renderer.dispose();
+  groundGeo.dispose();
+  groundMat.dispose();
+  cityMat.dispose();
+  towerGeo.dispose();
+  return dataUrl;
 }
 
 /** Return true if the pointer/click is on the map surface (not UI or map controls). Used for both click and pointermove. */
@@ -653,20 +972,26 @@ export default function MapScene() {
   const [pressAt, setPressAt] = useState(null);
   const [movingNeedleId, setMovingNeedleId] = useState(null);
   const [visitMode, setVisitMode] = useState(false);
+  const [panelNeedleId, setPanelNeedleId] = useState(null);
   const [poofAt, setPoofAt] = useState(null);
   const [showPlaceAnotherButton, setShowPlaceAnotherButton] = useState(false);
   const [menuAnchorXY, setMenuAnchorXY] = useState(null);
   const [hintPosition, setHintPosition] = useState(null);
   const [anchorsVersion, setAnchorsVersion] = useState(0);
   const [creditsOpen, setCreditsOpen] = useState(false);
+  const [polaroid, setPolaroid] = useState(null);
+  const [isDeveloping, setIsDeveloping] = useState(false);
+  const [visitedNeedleId, setVisitedNeedleId] = useState(null);
+  const [photoFlash, setPhotoFlash] = useState(false);
+  const polaroidAbortRef = useRef(null);
 
   const needleAnchorsRef = useRef(new Map());
 
   const totalNeedles = 1 + placements.length;
   const countUpNeedles = useCountUp(totalNeedles);
-  const countUpAcres = useCountUp(totalNeedles * NEEDLE_PARCEL_ACRES);
+  const countUpAcres = useCountUp(0.33 + placements.length * NEEDLE_PARCEL_ACRES);
   const countUpCost = useCountUp(
-    totalNeedles * NEEDLE_BUILD_COST + placements.reduce((sum, p) => sum + (p.landValue ?? 0), 0)
+    4_500_000 + placements.length * NEEDLE_BUILD_COST + placements.reduce((sum, p) => sum + (p.landValue ?? 0), 0)
   );
   const totalTourismRevenue = placements.reduce(
     (sum, p) => sum + (p.tourismRevenue ?? computeTourismRevenue(p.lat, p.lng)),
@@ -694,6 +1019,7 @@ export default function MapScene() {
   const poofAudioRef = useRef(null);
   const moveAudioRef = useRef(null);
   const visitAudioRef = useRef(null);
+  const cameraShutterAudioRef = useRef(null);
   const placementCountRef = useRef(0);
   const modelClassRef = useRef(null);
   const placedModelsRef = useRef(new Map());
@@ -878,18 +1204,22 @@ export default function MapScene() {
       if (!isPlacing && !movingNeedleId && !visitMode) {
         if (overMenu) {
           /* keep current hoveredNeedleId so menu stays open while pointer is on menu */
-        } else if (pos && placementsRef.current?.length) {
-          const nearest = placementsRef.current.reduce(
+        } else if (pos) {
+          const distToOriginal = distanceMeters(pos, { lat: SEATTLE_CENTER.lat, lng: SEATTLE_CENTER.lng });
+          const list = placementsRef.current ?? [];
+          const nearest = list.reduce(
             (best, p) => {
               const d = distanceMeters(pos, { lat: p.lat, lng: p.lng });
               return d < best.d ? { id: p.id, d } : best;
             },
             { id: null, d: Infinity }
           );
-          if (DEBUG_HOVER && nearest.id != null) {
-            console.log("hover pos", pos.lat.toFixed(6), pos.lng.toFixed(6), "nearest.d(m)", nearest.d.toFixed(1), "inside?", nearest.d < FOOTPRINT_RADIUS_M);
-          }
-          if (nearest.id != null && nearest.d < FOOTPRINT_RADIUS_M) {
+          const inOriginal = distToOriginal < FOOTPRINT_RADIUS_M;
+          const inNearest = nearest.id != null && nearest.d < FOOTPRINT_RADIUS_M;
+          const originalCloser = inOriginal && (!inNearest || distToOriginal <= nearest.d);
+          if (originalCloser) {
+            setHoveredNeedleId(ORIGINAL_NEEDLE_ID);
+          } else if (inNearest) {
             setHoveredNeedleId(nearest.id);
           } else {
             setHoveredNeedleId(null);
@@ -901,6 +1231,8 @@ export default function MapScene() {
         }
         if (hoveredNeedleIdRef.current == null && pos) {
           const list = placementsRef.current;
+          const distToOriginal = distanceMeters(pos, { lat: SEATTLE_CENTER.lat, lng: SEATTLE_CENTER.lng });
+          const inOriginal = distToOriginal < FOOTPRINT_RADIUS_M;
           if (list?.length) {
             const nearest = list.reduce(
               (best, p) => {
@@ -909,7 +1241,9 @@ export default function MapScene() {
               },
               { id: null, d: Infinity }
             );
-            if (nearest.id != null && nearest.d < FOOTPRINT_RADIUS_M) {
+            if (inOriginal && (!nearest.id || nearest.d >= FOOTPRINT_RADIUS_M || distToOriginal <= nearest.d)) {
+              setHintNeedleId(ORIGINAL_NEEDLE_ID);
+            } else if (nearest.id != null && nearest.d < FOOTPRINT_RADIUS_M) {
               const currentHintId = hintNeedleId;
               if (currentHintId == null) {
                 setHintNeedleId(nearest.id);
@@ -917,10 +1251,12 @@ export default function MapScene() {
                 setHintNeedleId(nearest.id);
               } else {
                 const currentPlacement = list.find((p) => p.id === currentHintId);
-                const distToCurrent = currentPlacement ? distanceMeters(pos, { lat: currentPlacement.lat, lng: currentPlacement.lng }) : Infinity;
+                const distToCurrent = currentPlacement ? distanceMeters(pos, { lat: currentPlacement.lat, lng: currentPlacement.lng }) : (currentHintId === ORIGINAL_NEEDLE_ID ? distToOriginal : Infinity);
                 if (nearest.d < distToCurrent * 0.75) setHintNeedleId(nearest.id);
               }
             } else setHintNeedleId(null);
+          } else if (inOriginal) {
+            setHintNeedleId(ORIGINAL_NEEDLE_ID);
           } else setHintNeedleId(null);
         }
       } else setHintNeedleId(null);
@@ -948,8 +1284,17 @@ export default function MapScene() {
     }
     const mapEl = mapRef.current;
     const wrapper = mapWrapperRef.current;
+    if (!mapEl || !wrapper) {
+      setHintPosition(null);
+      return;
+    }
+    if (hintNeedleId === ORIGINAL_NEEDLE_ID) {
+      const xy = needleAnchorsRef.current.get(ORIGINAL_NEEDLE_ID) ?? latLngToWrapperPixelWithProjection(mapEl, wrapper, { lat: SEATTLE_CENTER.lat, lng: SEATTLE_CENTER.lng }, projectionOverlayRef);
+      setHintPosition(xy ?? null);
+      return;
+    }
     const placement = placements.find((p) => p.id === hintNeedleId);
-    if (!mapEl || !wrapper || !placement) {
+    if (!placement) {
       setHintPosition(null);
       return;
     }
@@ -989,6 +1334,8 @@ export default function MapScene() {
     if (!mapEl || !wrapper) return;
     const anchors = needleAnchorsRef.current;
     anchors.clear();
+    const origXY = latLngToWrapperPixelWithProjection(mapEl, wrapper, { lat: SEATTLE_CENTER.lat, lng: SEATTLE_CENTER.lng }, projectionOverlayRef);
+    if (origXY != null) anchors.set(ORIGINAL_NEEDLE_ID, origXY);
     for (const p of placements) {
       const xy = latLngToWrapperPixelWithProjection(mapEl, wrapper, { lat: p.lat, lng: p.lng }, projectionOverlayRef);
       if (xy != null) anchors.set(p.id, xy);
@@ -1011,6 +1358,8 @@ export default function MapScene() {
     const onCameraOrResize = () => {
       const anchors = needleAnchorsRef.current;
       anchors.clear();
+      const origXY = latLngToWrapperPixelWithProjection(mapEl, wrapper, { lat: SEATTLE_CENTER.lat, lng: SEATTLE_CENTER.lng }, projectionOverlayRef);
+      if (origXY != null) anchors.set(ORIGINAL_NEEDLE_ID, origXY);
       for (const p of placements) {
         const xy = latLngToWrapperPixelWithProjection(mapEl, wrapper, { lat: p.lat, lng: p.lng }, projectionOverlayRef);
         if (xy != null) anchors.set(p.id, xy);
@@ -1116,7 +1465,7 @@ export default function MapScene() {
               hornEl.currentTime = 0;
               hornEl.play().catch((err) => console.error("audio play failed", err));
             }
-          } else if (isAtMoPop(at.lat, at.lng) || isAtChihuly(at.lat, at.lng)) {
+          } else if (isAtMoPop(at.lat, at.lng) || isAtChihuly(at.lat, at.lng) || isAtPacificScienceCenter(at.lat, at.lng)) {
             const glassEl = glassSmashAudioRef.current;
             if (glassEl) {
               glassEl.volume = 0.9;
@@ -1174,21 +1523,36 @@ export default function MapScene() {
           );
           if (nearest.id != null && nearest.d < FOOTPRINT_RADIUS_M) needleId = String(nearest.id);
         }
+        if (needleId == null) {
+          const distToOriginal = distanceMeters(at, { lat: SEATTLE_CENTER.lat, lng: SEATTLE_CENTER.lng });
+          const nearest = placements.reduce(
+            (best, p) => {
+              const d = distanceMeters(at, { lat: p.lat, lng: p.lng });
+              return d < best.d ? { id: p.id, d } : best;
+            },
+            { id: null, d: Infinity }
+          );
+          if (distToOriginal < FOOTPRINT_RADIUS_M && (nearest.id == null || nearest.d >= FOOTPRINT_RADIUS_M || distToOriginal <= nearest.d)) {
+            needleId = String(ORIGINAL_NEEDLE_ID);
+          }
+        }
         if (needleId != null) {
           const id = Number(needleId);
-          const placement = placements.find((p) => p.id === id);
-          if (placement) {
-            const mapEl = mapRef.current;
-            const rect = wrapper.getBoundingClientRect();
-            const xy = mapEl && rect ? latLngToContainerPixel(mapEl, rect, { lat: placement.lat, lng: placement.lng }) : null;
-            if (xy) {
-              setPressAt({ x: xy.x, y: xy.y });
-              setTimeout(() => setPressAt(null), 280);
+          const placement = id === ORIGINAL_NEEDLE_ID ? null : placements.find((p) => p.id === id);
+          if (placement || id === ORIGINAL_NEEDLE_ID) {
+            if (placement) {
+              const mapEl = mapRef.current;
+              const rect = wrapper.getBoundingClientRect();
+              const xy = mapEl && rect ? latLngToContainerPixel(mapEl, rect, { lat: placement.lat, lng: placement.lng }) : null;
+              if (xy) {
+                setPressAt({ x: xy.x, y: xy.y });
+                setTimeout(() => setPressAt(null), 280);
+              }
             }
+            setHintNeedleId(null);
+            setHoveredNeedleId(id);
+            return;
           }
-          setHintNeedleId(null);
-          setHoveredNeedleId(id);
-          return;
         }
         setHoveredNeedleId(null);
         setMenuAnchorXY(null);
@@ -1227,7 +1591,7 @@ export default function MapScene() {
             hornEl.currentTime = 0;
             hornEl.play().catch((err) => console.error("audio play failed", err));
           }
-        } else if (isAtMoPop(at.lat, at.lng) || isAtChihuly(at.lat, at.lng)) {
+        } else if (isAtMoPop(at.lat, at.lng) || isAtChihuly(at.lat, at.lng) || isAtPacificScienceCenter(at.lat, at.lng)) {
           const glassEl = glassSmashAudioRef.current;
           if (glassEl) {
             glassEl.volume = 0.9;
@@ -1358,9 +1722,13 @@ export default function MapScene() {
     const glow = hintGlowRef.current;
     if (!mapEl || !glow) return;
     const showHint = hintNeedleId != null && hoveredNeedleId == null && !isPlacing && !movingNeedleId && !visitMode;
-    const placement = showHint ? placements.find((p) => p.id === hintNeedleId) : null;
+    const placement = showHint && hintNeedleId !== ORIGINAL_NEEDLE_ID ? placements.find((p) => p.id === hintNeedleId) : null;
+    const isOriginalHint = showHint && hintNeedleId === ORIGINAL_NEEDLE_ID;
     if (placement) {
       glow.path = circleCoordinates(placement.lat, placement.lng, HINT_GLOW_RADIUS_M, CIRCLE_POINTS);
+      if (!glow.parentElement) mapEl.appendChild(glow);
+    } else if (isOriginalHint) {
+      glow.path = circleCoordinates(SEATTLE_CENTER.lat, SEATTLE_CENTER.lng, HINT_GLOW_RADIUS_M, CIRCLE_POINTS);
       if (!glow.parentElement) mapEl.appendChild(glow);
     } else {
       if (glow.parentElement) mapEl.removeChild(glow);
@@ -1373,9 +1741,13 @@ export default function MapScene() {
     const highlight = footprintHighlightRef.current;
     if (!mapEl || !highlight) return;
     const show = hoveredNeedleId != null && !isPlacing && !movingNeedleId && !visitMode;
-    const placement = show ? placements.find((p) => p.id === hoveredNeedleId) : null;
+    const placement = show && hoveredNeedleId !== ORIGINAL_NEEDLE_ID ? placements.find((p) => p.id === hoveredNeedleId) : null;
+    const isOriginalHovered = show && hoveredNeedleId === ORIGINAL_NEEDLE_ID;
     if (placement) {
       highlight.path = circleCoordinates(placement.lat, placement.lng, FOOTPRINT_RADIUS_M, CIRCLE_POINTS);
+      if (!highlight.parentElement) mapEl.appendChild(highlight);
+    } else if (isOriginalHovered) {
+      highlight.path = circleCoordinates(SEATTLE_CENTER.lat, SEATTLE_CENTER.lng, FOOTPRINT_RADIUS_M, CIRCLE_POINTS);
       if (!highlight.parentElement) mapEl.appendChild(highlight);
     } else {
       if (highlight.parentElement) mapEl.removeChild(highlight);
@@ -1395,6 +1767,18 @@ export default function MapScene() {
         else el.classList.remove("needle-model-outlined");
       }
     });
+  }, [hoveredNeedleId, isPlacing, movingNeedleId, visitMode]);
+
+  // Original needle: swap to highlight model and outline when hovered (same behavior as placed needles).
+  useEffect(() => {
+    const original = originalNeedleRef.current;
+    if (!original) return;
+    const useHighlight = hoveredNeedleId === ORIGINAL_NEEDLE_ID && !isPlacing && !movingNeedleId && !visitMode;
+    if (original.src !== undefined) original.src = useHighlight ? HIGHLIGHT_MODEL_SRC : ORIGINAL_NEEDLE_MODEL_SRC;
+    if (original?.classList != null) {
+      if (useHighlight) original.classList.add("needle-model-outlined");
+      else original.classList.remove("needle-model-outlined");
+    }
   }, [hoveredNeedleId, isPlacing, movingNeedleId, visitMode]);
 
   const showLoading = !mapLibReady || !mapSteady;
@@ -1482,9 +1866,11 @@ export default function MapScene() {
   };
 
   const onVisitNeedle = (id) => {
-    const placement = placements.find((p) => p.id === id);
+    const isOriginal = id === ORIGINAL_NEEDLE_ID;
+    const placement = isOriginal ? null : placements.find((p) => p.id === id);
     const mapEl = mapRef.current;
-    if (!placement || !mapEl) return;
+    const visited = isOriginal ? { lat: SEATTLE_CENTER.lat, lng: SEATTLE_CENTER.lng } : placement ? { lat: placement.lat, lng: placement.lng } : null;
+    if (!visited || !mapEl) return;
     if (soundEnabled && visitAudioRef.current) {
       visitAudioRef.current.volume = 0.5;
       visitAudioRef.current.currentTime = 0;
@@ -1492,15 +1878,15 @@ export default function MapScene() {
     }
     setHoveredNeedleId(null);
     setMenuAnchorXY(null);
+    setPanelNeedleId(id);
+    setVisitedNeedleId(id);
     setVisitMode(true);
-    const visited = { lat: placement.lat, lng: placement.lng };
     const original = { lat: SEATTLE_CENTER.lat, lng: SEATTLE_CENTER.lng };
     const bearingToOther = bearingDegrees(visited, original);
-    // Directive 1: Camera at exactly 520 ft ASL, facing the new needle. Directive 2 (if possible): original in background — small heading offset to keep it in frame.
     const VISIT_HEADING_OFFSET_DEG = 15;
     const heading = (bearingToOther + VISIT_HEADING_OFFSET_DEG + 360) % 360;
     const endCamera = {
-      center: { lat: placement.lat, lng: placement.lng, altitude: VISIT_ALTITUDE_ASL_M },
+      center: { lat: visited.lat, lng: visited.lng, altitude: VISIT_ALTITUDE_ASL_M },
       tilt: 82,
       range: VISIT_RANGE_M,
       heading,
@@ -1526,8 +1912,189 @@ export default function MapScene() {
       mapEl.heading = DEFAULT_HEADING;
       mapEl.range = DEFAULT_RANGE;
     }
+    setPanelNeedleId(null);
     setVisitMode(false);
+    setVisitedNeedleId(null);
   };
+
+  /** Fallback placeholder if Three.js render fails. */
+  const getFallbackPlaceholderUrl = useCallback(() => {
+    const canvas = document.createElement("canvas");
+    canvas.width = 400;
+    canvas.height = 300;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return null;
+    ctx.fillStyle = "#e8e8e0";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = "#333";
+    ctx.font = "16px Inter, sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText("Screenshot unavailable", canvas.width / 2, canvas.height / 2);
+    return canvas.toDataURL("image/png");
+  }, []);
+
+  const dismissPolaroid = useCallback(() => {
+    polaroidAbortRef.current?.abort();
+    polaroidAbortRef.current = null;
+    setPolaroid(null);
+    setIsDeveloping(false);
+  }, []);
+
+  const onTakePhoto = useCallback(async () => {
+    if (soundEnabled && cameraShutterAudioRef.current) {
+      cameraShutterAudioRef.current.volume = 0.5;
+      cameraShutterAudioRef.current.currentTime = 0;
+      cameraShutterAudioRef.current.play().catch((err) => console.error("camera shutter play failed", err));
+    }
+    setPhotoFlash(true);
+    const flashDuration = 150;
+    setTimeout(() => setPhotoFlash(false), flashDuration);
+
+    const needleId = visitedNeedleId ?? panelNeedleId;
+    const isOriginal = needleId === ORIGINAL_NEEDLE_ID;
+    const placement = !isOriginal ? placements.find((p) => p.id === needleId) : null;
+    const visitedLat = isOriginal ? SEATTLE_CENTER.lat : (placement?.lat ?? SEATTLE_CENTER.lat);
+    const visitedLng = isOriginal ? SEATTLE_CENTER.lng : (placement?.lng ?? SEATTLE_CENTER.lng);
+    const needleNumber = isOriginal ? 1 : placements.findIndex((p) => p.id === needleId) + 2;
+    const lat = Number(visitedLat.toFixed(5));
+    const lng = Number(visitedLng.toFixed(5));
+    const originalLat = Number(SEATTLE_CENTER.lat.toFixed(5));
+    const originalLng = Number(SEATTLE_CENTER.lng.toFixed(5));
+
+    const mapEl = mapRef.current;
+    let cameraHeading;
+    let cameraTilt;
+    let cameraRange;
+    if (mapEl) {
+      cameraHeading = mapEl.heading ?? undefined;
+      cameraTilt = mapEl.tilt ?? undefined;
+      cameraRange = mapEl.range ?? undefined;
+    }
+
+    const landAcquisition = placement?.landValue ?? (isOriginal ? getValuationAtLatLng(visitedLat, visitedLng).landValue : 0);
+    const constructionCost = NEEDLE_BUILD_COST;
+    const projectedTourismRevenue = placement?.tourismRevenue ?? computeTourismRevenue(visitedLat, visitedLng);
+    const createdAt = Date.now();
+
+    const visited = { lat: visitedLat, lng: visitedLng };
+    const original = { lat: originalLat, lng: originalLng };
+    const cameraHeadingNorm = cameraHeading ?? 0;
+    const VISIBILITY_RADIUS_M = 6000;
+    const FOV_DEG = 60;
+    const NEARBY_RADIUS_M = 1200;
+    const NEARBY_FOV_DEG = 90;
+    const MAX_EXTRA_NEEDLES = 4;
+
+    const visibleNeedles = [];
+    visibleNeedles.push({ needleId, lat: visitedLat, lng: visitedLng, distanceMeters: 0, bearingDeg: 0 });
+    if (!isOriginal) {
+      visibleNeedles.push({
+        needleId: ORIGINAL_NEEDLE_ID,
+        lat: originalLat,
+        lng: originalLng,
+        distanceMeters: distanceMeters(visited, original),
+        bearingDeg: bearingDegrees(visited, original),
+      });
+    }
+    const others = placements
+      .filter((p) => p.id !== needleId)
+      .map((p) => {
+        const dist = distanceMeters(visited, { lat: p.lat, lng: p.lng });
+        const bearing = bearingDegrees(visited, { lat: p.lat, lng: p.lng });
+        const angleDiff = smallestAngleDiff(cameraHeadingNorm, bearing);
+        return {
+          needleId: p.id,
+          lat: p.lat,
+          lng: p.lng,
+          distanceMeters: dist,
+          bearingDeg: bearing,
+          angleDiffDegrees: angleDiff,
+        };
+      })
+      .filter(
+        (c) =>
+          c.distanceMeters <= VISIBILITY_RADIUS_M &&
+          (c.distanceMeters <= NEARBY_RADIUS_M ? c.angleDiffDegrees < NEARBY_FOV_DEG : c.angleDiffDegrees < FOV_DEG)
+      )
+      .sort((a, b) => (a.distanceMeters * 0.7 + a.angleDiffDegrees * 40) - (b.distanceMeters * 0.7 + b.angleDiffDegrees * 40))
+      .slice(0, MAX_EXTRA_NEEDLES)
+      .map(({ angleDiffDegrees, ...rest }) => rest);
+    visibleNeedles.push(...others);
+
+    const metadata = {
+      visitedLat,
+      visitedLng,
+      originalLat,
+      originalLng,
+      cameraHeading,
+      cameraTilt,
+      cameraRange,
+      landAcquisition,
+      constructionCost,
+      projectedTourismRevenue,
+      createdAt,
+      needleId,
+      needleNumber,
+      visibleNeedles,
+    };
+
+    let placeholderUrl;
+    try {
+      placeholderUrl = generatePlaceholderPolaroid(metadata, 1200, 900);
+    } catch (err) {
+      console.warn("Placeholder polaroid render failed:", err?.message ?? err);
+      placeholderUrl = getFallbackPlaceholderUrl();
+    }
+    if (!placeholderUrl) placeholderUrl = getFallbackPlaceholderUrl();
+
+    const id = typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : `polaroid-${createdAt}`;
+    setPolaroid({
+      id,
+      dataUrl: placeholderUrl,
+      placeholderUrl,
+      aiUrl: null,
+      needleId,
+      needleNumber,
+      lat,
+      lng,
+      createdAt,
+      status: "developing",
+    });
+    setIsDeveloping(true);
+
+    const controller = new AbortController();
+    polaroidAbortRef.current = controller;
+
+    try {
+      const res = await fetch("/api/generate-polaroid", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...metadata, stylePreset: "photoreal_postcard" }),
+        signal: controller.signal,
+      });
+      const json = await res.json().catch(() => ({}));
+      if (res.ok && json.dataUrl) {
+        setPolaroid((prev) =>
+          prev && prev.id === id ? { ...prev, dataUrl: json.dataUrl, aiUrl: json.dataUrl, status: "ready" } : prev
+        );
+      } else {
+        setPolaroid((prev) => (prev && prev.id === id ? { ...prev, status: "failed" } : prev));
+      }
+    } catch (err) {
+      if (err?.name !== "AbortError") {
+        setPolaroid((prev) => (prev && prev.id === id ? { ...prev, status: "failed" } : prev));
+      }
+    } finally {
+      if (polaroidAbortRef.current === controller) polaroidAbortRef.current = null;
+      setIsDeveloping(false);
+    }
+  }, [
+    soundEnabled,
+    visitedNeedleId,
+    panelNeedleId,
+    placements,
+    getFallbackPlaceholderUrl,
+  ]);
 
   const onClearNeedles = () => {
     if (soundEnabled && poofAudioRef.current) {
@@ -1544,6 +2111,7 @@ export default function MapScene() {
     setPlacements([]);
     setMovingNeedleId(null);
     setHoveredNeedleId(null);
+    setPanelNeedleId(null);
     setVisitMode(false);
     setShowPlaceAnotherButton(false);
     setIsPlacing(true);
@@ -1568,6 +2136,7 @@ export default function MapScene() {
       <audio ref={poofAudioRef} src="/audio/poof.mp3" preload="auto" />
       <audio ref={moveAudioRef} src="/audio/move.mp3" preload="auto" />
       <audio ref={visitAudioRef} src="/audio/visit.mp3" preload="auto" />
+      <audio ref={cameraShutterAudioRef} src="/audio/camera-shutter.mp3" preload="auto" />
       <button
         type="button"
         className="exhibit-sound-toggle"
@@ -1619,7 +2188,8 @@ export default function MapScene() {
             <div className="needle-ui-overlay" aria-hidden="true">
             {(() => {
               const showHint = hintNeedleId != null && hoveredNeedleId == null && !isPlacing && !movingNeedleId && !visitMode;
-              const hintPlacement = showHint ? placements.find((p) => p.id === hintNeedleId) : null;
+              const hintPlacement = showHint && hintNeedleId !== ORIGINAL_NEEDLE_ID ? placements.find((p) => p.id === hintNeedleId) : null;
+              const hintIsOriginal = showHint && hintNeedleId === ORIGINAL_NEEDLE_ID;
               return (
                 <>
                   {/* Invisible hit area at same position as 3D glow (glow is at needle node in 3D scene) */}
@@ -1628,6 +2198,20 @@ export default function MapScene() {
                       className="needle-click-hint needle-click-hint-hit-only"
                       aria-label="Click to open needle menu"
                       data-needle-id={hintPlacement.id}
+                      style={{
+                        position: "absolute",
+                        left: hintPosition.x,
+                        top: hintPosition.y,
+                        transform: "translate(-50%, -50%)",
+                        zIndex: 9996,
+                      }}
+                    />
+                  )}
+                  {hintIsOriginal && hintPosition && (
+                    <div
+                      className="needle-click-hint needle-click-hint-hit-only"
+                      aria-label="Click to open needle menu"
+                      data-needle-id={ORIGINAL_NEEDLE_ID}
                       style={{
                         position: "absolute",
                         left: hintPosition.x,
@@ -1656,7 +2240,8 @@ export default function MapScene() {
             })()}
             {(() => {
               const showMenu = hoveredNeedleId != null && !isPlacing && !movingNeedleId && !visitMode;
-              const placement = showMenu ? placements.find((p) => p.id === hoveredNeedleId) : null;
+              const isOriginal = hoveredNeedleId === ORIGINAL_NEEDLE_ID;
+              const placement = showMenu && !isOriginal ? placements.find((p) => p.id === hoveredNeedleId) : null;
               const wrapper = mapWrapperRef.current;
               const anchor = showMenu ? menuAnchorXY : null;
               const rect = wrapper?.getBoundingClientRect?.();
@@ -1671,7 +2256,7 @@ export default function MapScene() {
                 anchor.y <= rect.height;
               return (
                 showMenu &&
-                placement &&
+                (placement != null || isOriginal) &&
                 anchor &&
                 inBounds && (
                   <div
@@ -1688,10 +2273,17 @@ export default function MapScene() {
                       gap: 0,
                     }}
                   >
-                    <button type="button" onClick={() => onMoveNeedle(hoveredNeedleId)}>
-                      Move Needle
-                    </button>
-                    {placements.length > 1 && (
+                    {isOriginal && (
+                      <div className="needle-action-menu-title" aria-hidden>
+                        Space Needle #1
+                      </div>
+                    )}
+                    {!isOriginal && (
+                      <button type="button" onClick={() => onMoveNeedle(hoveredNeedleId)}>
+                        Move Needle
+                      </button>
+                    )}
+                    {!isOriginal && placements.length > 1 && (
                       <button
                         type="button"
                         className="exhibit-btn-destructive"
@@ -1726,21 +2318,45 @@ export default function MapScene() {
             </div>
           </div>
           {visitMode && (
-            <button
-              type="button"
-              className="needle-exit-view exhibit-btn-primary map-overlay"
+            <div
+              className="needle-visit-actions map-overlay"
               style={{
                 position: "absolute",
                 bottom: 16,
                 left: "50%",
                 transform: "translateX(-50%)",
                 zIndex: 100,
-                pointerEvents: "auto",
+                pointerEvents: "none",
+                display: "flex",
+                alignItems: "center",
+                gap: 16,
               }}
-              onClick={onExitVisit}
             >
-              Exit View
-            </button>
+              <button
+                type="button"
+                className="needle-exit-view exhibit-btn-primary"
+                style={{ pointerEvents: "auto" }}
+                onClick={onExitVisit}
+              >
+                Exit View
+              </button>
+              <button
+                type="button"
+                className="needle-take-photo exhibit-btn-primary"
+                style={{ pointerEvents: "auto" }}
+                disabled={isDeveloping}
+                onClick={onTakePhoto}
+              >
+                Take Photo
+              </button>
+            </div>
+          )}
+          {photoFlash && (
+            <div
+              className="photo-flash-overlay map-overlay"
+              aria-hidden
+              style={{ pointerEvents: "none" }}
+            />
           )}
           {showLoading && (
             <div className="exhibit-loading-overlay map-overlay">
@@ -1772,6 +2388,7 @@ export default function MapScene() {
             disabled={(placements.length < 1 && !isPlacing) || movingNeedleId != null}
             onClick={() => {
               if ((placements.length < 1 && !isPlacing) || movingNeedleId != null) return;
+              setPanelNeedleId(null);
               setIsPlacing(true);
             }}
           >
@@ -1780,48 +2397,106 @@ export default function MapScene() {
         </div>
         <div className="exhibit-data">
           <div className="exhibit-live-estimate">
-            <h3>LIVE ESTIMATE</h3>
             {(() => {
               const placingValuation =
                 isPlacing && hoverLatLng
                   ? getValuationAtLatLng(hoverLatLng.lat, hoverLatLng.lng)
                   : null;
+              const showPanelNeedle = visitMode && panelNeedleId != null;
+              const isOriginalHighlighted =
+                !showPanelNeedle &&
+                !isPlacing &&
+                !movingNeedleId &&
+                !visitMode &&
+                hoveredNeedleId === ORIGINAL_NEEDLE_ID;
               const activePlacement =
-                !isPlacing && !movingNeedleId && !visitMode && hoveredNeedleId != null
-                  ? placements.find((p) => p.id === hoveredNeedleId)
+                showPanelNeedle && panelNeedleId !== ORIGINAL_NEEDLE_ID
+                  ? placements.find((p) => p.id === panelNeedleId)
+                  : !showPanelNeedle &&
+                      !isPlacing &&
+                      !movingNeedleId &&
+                      !visitMode &&
+                      hoveredNeedleId != null &&
+                      hoveredNeedleId !== ORIGINAL_NEEDLE_ID
+                    ? placements.find((p) => p.id === hoveredNeedleId)
+                    : null;
+              const isOriginalInPanel = showPanelNeedle && panelNeedleId === ORIGINAL_NEEDLE_ID;
+              const movingPlacement = movingNeedleId != null ? placements.find((p) => p.id === movingNeedleId) : null;
+              const boxTitle =
+                isOriginalInPanel || isOriginalHighlighted
+                  ? "Space Needle #1"
+                  : activePlacement != null
+                    ? `Space Needle #${placements.findIndex((p) => p.id === (showPanelNeedle ? panelNeedleId : hoveredNeedleId)) + 2}`
+                    : "LIVE ESTIMATE";
+              const coordsSource = isPlacing && hoverLatLng
+                ? { lat: hoverLatLng.lat, lng: hoverLatLng.lng }
+                : (activePlacement || movingPlacement)
+                  ? { lat: (activePlacement || movingPlacement).lat, lng: (activePlacement || movingPlacement).lng }
                   : null;
               return (
                 <>
-                  <div className="exhibit-live-row">
-                    <span className="exhibit-live-label">Neighborhood</span>
-                    <span className="exhibit-live-value">
-                      {placingValuation
-                        ? placingValuation.neighborhoodLabel
-                        : activePlacement
-                          ? activePlacement.neighborhoodLabel
-                          : "—"}
-                    </span>
-                  </div>
-                  <div className="exhibit-live-row">
-                    <span className="exhibit-live-label">Land Acquisition</span>
-                    <span className="exhibit-live-value">
-                      {placingValuation
-                        ? formatCurrency(placingValuation.landValue)
-                        : activePlacement != null && activePlacement.landValue != null
-                          ? formatCurrency(activePlacement.landValue)
-                          : "—"}
-                    </span>
-                  </div>
-                  <div className="exhibit-live-row">
-                    <span className="exhibit-live-label">Rate</span>
-                    <span className="exhibit-live-value">
-                      {placingValuation
-                        ? formatRate(placingValuation.ratePerSqFt)
-                        : activePlacement != null && activePlacement.ratePerSqFt != null
-                          ? formatRate(activePlacement.ratePerSqFt)
-                          : "—"}
-                    </span>
-                  </div>
+                  <h3>{boxTitle}</h3>
+                  {isOriginalInPanel || isOriginalHighlighted ? (
+                    <>
+                      <div className="exhibit-live-row">
+                        <span className="exhibit-live-label">Year constructed</span>
+                        <span className="exhibit-live-value">1962</span>
+                      </div>
+                      <div className="exhibit-live-row">
+                        <span className="exhibit-live-label">Land required</span>
+                        <span className="exhibit-live-value">0.33 acres</span>
+                      </div>
+                      <div className="exhibit-live-row">
+                        <span className="exhibit-live-label">Total Cost</span>
+                        <span className="exhibit-live-value">$4.5M</span>
+                      </div>
+                      <div className="exhibit-live-row">
+                        <span className="exhibit-live-label">Coordinates</span>
+                        <span className="exhibit-live-value">
+                          {formatLatLngDirectional(SEATTLE_CENTER.lat, SEATTLE_CENTER.lng)}
+                        </span>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="exhibit-live-row">
+                        <span className="exhibit-live-label">Neighborhood</span>
+                        <span className="exhibit-live-value">
+                          {placingValuation
+                            ? placingValuation.neighborhoodLabel
+                            : activePlacement
+                              ? activePlacement.neighborhoodLabel
+                              : "—"}
+                        </span>
+                      </div>
+                      <div className="exhibit-live-row">
+                        <span className="exhibit-live-label">Land Acquisition</span>
+                        <span className="exhibit-live-value">
+                          {placingValuation
+                            ? formatCurrency(placingValuation.landValue)
+                            : activePlacement != null && activePlacement.landValue != null
+                              ? formatCurrency(activePlacement.landValue)
+                              : "—"}
+                        </span>
+                      </div>
+                      <div className="exhibit-live-row">
+                        <span className="exhibit-live-label">Rate</span>
+                        <span className="exhibit-live-value">
+                          {placingValuation
+                            ? formatRate(placingValuation.ratePerSqFt)
+                            : activePlacement != null && activePlacement.ratePerSqFt != null
+                              ? formatRate(activePlacement.ratePerSqFt)
+                              : "—"}
+                        </span>
+                      </div>
+                      <div className="exhibit-live-row">
+                        <span className="exhibit-live-label">Coordinates</span>
+                        <span className="exhibit-live-value">
+                          {coordsSource ? formatLatLngDirectional(coordsSource.lat, coordsSource.lng) : "—"}
+                        </span>
+                      </div>
+                    </>
+                  )}
                 </>
               );
             })()}
@@ -1853,6 +2528,69 @@ export default function MapScene() {
           </div>
         </div>
       </div>
+      {polaroid && (
+        <>
+          <div
+            className="exhibit-polaroid-backdrop"
+            aria-hidden
+            onClick={dismissPolaroid}
+          />
+          <div className="exhibit-polaroid-wrap" role="dialog" aria-label="Polaroid photo">
+            <div className="exhibit-polaroid-card">
+              <button
+                type="button"
+                className="exhibit-polaroid-close"
+                onClick={dismissPolaroid}
+                aria-label="Close polaroid"
+              >
+                ×
+              </button>
+              <div className="exhibit-polaroid-frame">
+                {polaroid.dataUrl ? (
+                  <img src={polaroid.dataUrl} alt="" className="exhibit-polaroid-img" />
+                ) : (
+                  <div className="exhibit-polaroid-unavailable">Screenshot unavailable</div>
+                )}
+                {polaroid.status === "developing" && (
+                  <div className="exhibit-polaroid-developing">Developing…</div>
+                )}
+                {polaroid.status === "failed" && (
+                  <>
+                    <div className="polaroid-warning blink" aria-hidden>
+                      <span className="led" />
+                      <span className="battery" />
+                      <span className="polaroid-warning-label">CAMERA BATTERY DEAD</span>
+                    </div>
+                  </>
+                )}
+              </div>
+              <div className="exhibit-polaroid-caption">
+                <div className="exhibit-polaroid-greeting">Greetings from Space Needle #{polaroid.needleNumber}!</div>
+                <div className="exhibit-polaroid-coords">
+                  {formatLatLngDirectional(polaroid.lat, polaroid.lng, " · ")}
+                </div>
+              </div>
+              <div className="exhibit-polaroid-actions">
+                <button
+                  type="button"
+                  className="exhibit-polaroid-delete"
+                  onClick={dismissPolaroid}
+                >
+                  Delete
+                </button>
+                <button
+                  type="button"
+                  className="exhibit-polaroid-download"
+                  disabled={!polaroid.dataUrl}
+                  onClick={() => polaroid.dataUrl && downloadPostcardJpg(polaroid)}
+                >
+                  Download photo
+                </button>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
       <button
         type="button"
         className="exhibit-credits-button"
@@ -1890,7 +2628,9 @@ export default function MapScene() {
                   production.
                 </p>
                 <div className="exhibit-credits-eg-logo-wrap">
-                  <img src="/eg_logo.png" alt="Extra Good Studio" className="exhibit-credits-eg-logo" />
+                  <a href="https://www.extragood.studio" target="_blank" rel="noopener noreferrer" className="exhibit-credits-eg-logo-link" aria-label="Extra Good Studio">
+                    <img src="/eg_logo.png" alt="" className="exhibit-credits-eg-logo" />
+                  </a>
                 </div>
                 {[
                   ["3D Model", "3D Model Sources"],

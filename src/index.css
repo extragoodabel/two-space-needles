@@ -98,7 +98,8 @@ button:focus-visible {
 /* Primary: mustard + black text */
 .exhibit-btn-primary,
 .exhibit-place-another,
-.needle-exit-view {
+.needle-exit-view,
+.needle-take-photo {
   background-color: var(--mustard);
   color: var(--black);
   border-color: var(--black);
@@ -210,6 +211,21 @@ button:focus-visible {
   pointer-events: none;
 }
 
+/* Full-viewport white flash for photo capture; short fade, does not block pointer events after animation */
+.photo-flash-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 99;
+  background: var(--white);
+  opacity: 0;
+  animation: photo-flash 150ms ease-out forwards;
+}
+@keyframes photo-flash {
+  0% { opacity: 0; }
+  40% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
 /* Needle UI layer: above map, only hint and menu receive pointer events */
 .needle-ui-overlay {
   position: absolute;
@@ -267,7 +283,6 @@ button:focus-visible {
 .needle-action-menu {
   position: relative;
   padding: 8px 0;
-  padding-top: 28px;
   background-color: var(--fair-blue);
   border: 2px solid var(--mustard);
   border-radius: 8px;
@@ -286,6 +301,15 @@ button:focus-visible {
   border: none;
   border-radius: 0;
   color: var(--white);
+  text-align: left;
+  border-bottom: 1px solid rgba(224, 162, 26, 0.3);
+}
+.needle-action-menu-title {
+  padding: 8px 12px 4px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  color: var(--mustard);
   text-align: left;
   border-bottom: 1px solid rgba(224, 162, 26, 0.3);
 }
@@ -629,6 +653,219 @@ button:focus-visible {
   border-color: rgba(255, 255, 255, 0.7);
 }
 
+/* Polaroid overlay: materializes after Take Photo */
+.exhibit-polaroid-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1001;
+  background: rgba(0, 0, 0, 0.4);
+  cursor: pointer;
+}
+
+.exhibit-polaroid-wrap {
+  position: fixed;
+  inset: 0;
+  z-index: 1002;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.exhibit-polaroid-wrap .exhibit-polaroid-card {
+  pointer-events: auto;
+  position: relative;
+  width: min(340px, 90vw);
+  background: var(--white);
+  padding: 12px 12px 28px;
+  border: 2px solid var(--black);
+  box-shadow: 4px 6px 0 rgba(0, 0, 0, 0.25);
+  animation: polaroid-flourish 0.35s ease-out forwards;
+}
+
+@keyframes polaroid-flourish {
+  from {
+    opacity: 0;
+    transform: scale(0.85) rotate(-2deg);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) rotate(0deg);
+  }
+}
+
+.exhibit-polaroid-close {
+  position: absolute;
+  top: 4px;
+  right: 6px;
+  background: transparent;
+  border: none;
+  font-size: 1.4rem;
+  line-height: 1;
+  color: var(--black);
+  cursor: pointer;
+  z-index: 1;
+}
+
+.exhibit-polaroid-close:hover {
+  color: var(--atomic-red);
+}
+
+.exhibit-polaroid-frame {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 4/3;
+  overflow: hidden;
+  margin-bottom: 10px;
+  background: #e8e8e0;
+}
+
+.exhibit-polaroid-developing {
+  position: absolute;
+  bottom: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--black);
+  background: rgba(255, 255, 255, 0.9);
+  padding: 4px 10px;
+  border: 1px solid var(--black);
+}
+
+.polaroid-warning {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  user-select: none;
+}
+
+.polaroid-warning .led {
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: #ff2d2d;
+  box-shadow: 0 0 10px rgba(255, 45, 45, 0.7);
+}
+
+.polaroid-warning .battery {
+  width: 18px;
+  height: 10px;
+  border: 1.5px solid #ff2d2d;
+  border-radius: 2px;
+  position: relative;
+}
+
+.polaroid-warning .battery::after {
+  content: "";
+  position: absolute;
+  right: -4px;
+  top: 2px;
+  width: 3px;
+  height: 6px;
+  background: #ff2d2d;
+  border-radius: 1px;
+}
+
+.polaroid-warning .polaroid-warning-label {
+  color: #ff2d2d;
+  font-weight: 600;
+}
+
+@keyframes batteryBlink {
+  0%, 60% { opacity: 1; }
+  61%, 100% { opacity: 0.15; }
+}
+
+.polaroid-warning.blink {
+  animation: batteryBlink 0.9s infinite;
+}
+
+.exhibit-polaroid-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.exhibit-polaroid-unavailable {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.85rem;
+  color: var(--black);
+  opacity: 0.8;
+}
+
+.exhibit-polaroid-caption {
+  text-align: center;
+  margin-bottom: 10px;
+}
+
+.exhibit-polaroid-greeting {
+  font-family: "League Spartan", sans-serif;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--black);
+  margin-bottom: 4px;
+}
+
+.exhibit-polaroid-coords {
+  font-size: 0.75rem;
+  color: var(--black);
+  opacity: 0.9;
+  font-variant: small-caps;
+  letter-spacing: 0.05em;
+}
+
+.exhibit-polaroid-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+}
+
+.exhibit-polaroid-download,
+.exhibit-polaroid-delete {
+  font-size: 0.75rem;
+  padding: 6px 12px;
+}
+
+.exhibit-polaroid-download {
+  background: var(--fair-blue);
+  color: var(--white);
+  border: 1px solid var(--black);
+}
+
+.exhibit-polaroid-download:hover:not(:disabled) {
+  color: var(--mustard);
+}
+
+.exhibit-polaroid-download:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.exhibit-polaroid-delete {
+  background: transparent;
+  color: var(--black);
+  border: 1px solid var(--black);
+}
+
+.exhibit-polaroid-delete:hover {
+  background: var(--atomic-red);
+  color: var(--white);
+  border-color: var(--atomic-red);
+}
+
 .exhibit-credits-backdrop {
   position: fixed;
   inset: 0;
@@ -708,6 +945,10 @@ button:focus-visible {
 }
 .exhibit-credits-eg-logo-wrap {
   margin-bottom: 14px;
+}
+.exhibit-credits-eg-logo-link {
+  display: block;
+  text-decoration: none;
 }
 .exhibit-credits-eg-logo {
   display: block;
