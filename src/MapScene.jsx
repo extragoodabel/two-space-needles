@@ -1248,13 +1248,13 @@ export default function MapScene() {
             crunchEl.currentTime = 0;
             crunchEl.play().catch((err) => console.error("audio play failed", err));
           }
-          if (newCount >= 5 && (newCount - 5) % 10 === 0) {
-            const wilhelmEl = wilhelmAudioRef.current;
-            if (wilhelmEl) {
-              wilhelmEl.volume = 0.02;
-              wilhelmEl.currentTime = 0;
-              wilhelmEl.play().catch((err) => console.error("audio play failed", err));
-            }
+        }
+        if (newCount >= 5 && (newCount - 5) % 10 === 0) {
+          const wilhelmEl = wilhelmAudioRef.current;
+          if (wilhelmEl) {
+            wilhelmEl.volume = 0.2;
+            wilhelmEl.currentTime = 0;
+            wilhelmEl.play().catch((err) => console.error("audio play failed", err));
           }
         }
       }
