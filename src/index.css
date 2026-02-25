@@ -612,6 +612,22 @@ button:focus-visible {
   }
 }
 
+/* Mobile: lock page scroll so map gets pinch/drag; gestures stay within map */
+@media (max-width: 768px) {
+  html,
+  body {
+    height: 100%;
+    overflow: hidden;
+  }
+  #root {
+    height: 100vh;
+    overflow: hidden;
+  }
+  .exhibit-viewport-inner {
+    touch-action: manipulation;
+  }
+}
+
 /* Mobile: stack buttons (Place Needle on top, Erase Needles below) and data columns */
 @media (max-width: 600px) {
   .exhibit-buttons-section {
@@ -792,6 +808,77 @@ button:focus-visible {
   height: 100%;
   object-fit: cover;
   display: block;
+}
+
+.exhibit-polaroid-blackout {
+  position: absolute;
+  inset: 0;
+  background: #000;
+  z-index: 1;
+}
+
+.exhibit-polaroid-battery-corner {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  z-index: 2;
+}
+
+.exhibit-polaroid-battery-corner .polaroid-warning {
+  position: static;
+}
+
+.exhibit-polaroid-ascii-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  animation: exhibit-polaroid-ascii-fade 0.8s ease-out forwards;
+}
+
+@keyframes exhibit-polaroid-ascii-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.exhibit-polaroid-ascii-needles {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2rem;
+}
+
+.exhibit-polaroid-ascii-needle {
+  margin: 0;
+  font-size: 8px;
+  line-height: 1.1;
+  color: var(--white);
+  font-family: ui-monospace, monospace;
+  letter-spacing: 0.02em;
+  user-select: none;
+}
+
+.exhibit-polaroid-production {
+  text-align: center;
+  margin-top: 0.25rem;
+}
+
+.exhibit-polaroid-production-link {
+  font-size: 0.7rem;
+  color: var(--white);
+  opacity: 0.9;
+  text-decoration: none;
+  font-variant: small-caps;
+  letter-spacing: 0.08em;
+}
+
+.exhibit-polaroid-production-link:hover {
+  text-decoration: underline;
+  opacity: 1;
 }
 
 .exhibit-polaroid-unavailable {
