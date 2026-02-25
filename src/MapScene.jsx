@@ -167,15 +167,15 @@ const CREDITS = [
   { category: "3D Model", name: "Low Poly Space Needle", creator: "Mejje mobile coffee", license: "Sketchfab", sourceUrl: "", notes: "low_poly_space_needle.glb" },
   { category: "Sound", name: "Dog Bark", creator: "Dragon Studio", license: "Pixabay", sourceUrl: "", notes: "Free Dog Bark" },
   { category: "Sound", name: "Crowd Stomp", creator: "Djart music", license: "Pixabay", sourceUrl: "", notes: "Powerful Stomps Claps Cheering (Sport Rhythmic Applause)" },
-  { category: "Sound", name: "Baseball organ", creator: "Freesound Community", license: "Freesound", sourceUrl: "", notes: "baseball cavalry sting short sustain 80564" },
-  { category: "Sound", name: "Musical saw hit", creator: "Freesound Community", license: "Freesound", sourceUrl: "", notes: "81382" },
-  { category: "Sound", name: "Crunch", creator: "Freesound Community", license: "Freesound", sourceUrl: "", notes: "plastic crunch 83779" },
-  { category: "Sound", name: "Poof", creator: "Freesound Community", license: "Freesound", sourceUrl: "", notes: "poof of smoke 87381" },
-  { category: "Sound", name: "Splash", creator: "Freesound Community", license: "Freesound", sourceUrl: "", notes: "6213" },
-  { category: "Sound", name: "Wilhelm", creator: "Freesound Community", license: "Freesound", sourceUrl: "", notes: "wilhelm 1 86895" },
-  { category: "Sound", name: "Glass smash", creator: "Freesound Community", license: "Freesound", sourceUrl: "", notes: "6266" },
+  { category: "Sound", name: "Baseball organ", creator: "Freesound Community", license: "Pixabay", sourceUrl: "", notes: "baseball cavalry sting short sustain 80564" },
+  { category: "Sound", name: "Musical saw hit", creator: "Freesound Community", license: "Pixabay", sourceUrl: "", notes: "81382" },
+  { category: "Sound", name: "Crunch", creator: "Freesound Community", license: "Pixabay", sourceUrl: "", notes: "plastic crunch 83779" },
+  { category: "Sound", name: "Poof", creator: "Freesound Community", license: "Pixabay", sourceUrl: "", notes: "poof of smoke 87381" },
+  { category: "Sound", name: "Splash", creator: "Freesound Community", license: "Pixabay", sourceUrl: "", notes: "6213" },
+  { category: "Sound", name: "Wilhelm", creator: "Freesound Community", license: "Pixabay", sourceUrl: "", notes: "wilhelm 1 86895" },
+  { category: "Sound", name: "Glass smash", creator: "Freesound Community", license: "Pixabay", sourceUrl: "", notes: "6266" },
   { category: "Sound", name: "Camera", creator: "Irinairinafomicheva", license: "Freesound", sourceUrl: "", notes: "13695" },
-  { category: "Sound", name: "Percussive hit 02", creator: "Freesound Community", license: "Freesound", sourceUrl: "", notes: "105799" },
+  { category: "Sound", name: "Percussive hit 02", creator: "Freesound Community", license: "Pixabay", sourceUrl: "", notes: "105799" },
 ];
 
 const NEEDLE_SCALE = 3.5 * (7 / 8);

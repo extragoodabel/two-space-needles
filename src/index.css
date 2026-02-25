@@ -850,6 +850,7 @@ button:focus-visible {
   align-items: center;
   justify-content: center;
   gap: 2rem;
+  transform: translateX(-0.35rem);
 }
 
 .exhibit-polaroid-ascii-needle {
