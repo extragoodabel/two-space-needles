@@ -3344,6 +3344,7 @@ export default function MapScene() {
         |||
         |||
         |||
+        |||
        /   \\
       /     \\
      /       \\
@@ -3356,6 +3357,7 @@ export default function MapScene() {
      --------
        \\   /
         \\-/
+        |||
         |||
         |||
         |||

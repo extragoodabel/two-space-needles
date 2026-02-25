@@ -837,6 +837,7 @@ button:focus-visible {
   align-items: center;
   justify-content: center;
   gap: 1rem;
+  transform: translateY(-0.2rem);
   animation: exhibit-polaroid-ascii-fade 0.8s ease-out forwards;
 }
 
@@ -850,7 +851,7 @@ button:focus-visible {
   align-items: center;
   justify-content: center;
   gap: 2rem;
-  transform: translateX(-0.35rem);
+  transform: translateX(-0.6rem) translateY(0.5rem);
 }
 
 .exhibit-polaroid-ascii-needle {
