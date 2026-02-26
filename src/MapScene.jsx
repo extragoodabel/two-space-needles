@@ -214,6 +214,8 @@ const VIEW_MODE_MOVE_CENTER_EPSILON_DEG = 0.0001;
 const VIEW_MODE_MOVE_RANGE_M = 5;
 const VIEW_MODE_MOVE_TILT_DEG = 1;
 const VIEW_MODE_MOVE_HEADING_DEG = 2;
+/** Mobile only: keep needle menu open this long so user can read and tap (ms). */
+const MOBILE_MENU_DWELL_MS = 2200;
 
 // --- Land Value / Build Cost (jokey, deterministic) ---
 // Valuation uses a larger "parcel" than the literal model base (land assembly).
@@ -722,8 +724,16 @@ function loadImage(src) {
   });
 }
 
-async function downloadPostcardJpg(polaroid) {
-  if (!polaroid?.dataUrl) return;
+/** Simple UA check for iOS (iPhone, iPad) so we can offer long-press save instead of forced download. */
+function isIosSafari() {
+  if (typeof navigator === "undefined") return false;
+  const ua = navigator.userAgent;
+  return /iPad|iPhone|iPod/.test(ua) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+}
+
+/** Build postcard JPG and return data URL (for download or iOS save flow). */
+async function generatePostcardJpgDataUrl(polaroid) {
+  if (!polaroid?.dataUrl) return null;
 
   const [img, logoImg] = await Promise.all([
     loadImage(polaroid.dataUrl),
@@ -831,8 +841,13 @@ async function downloadPostcardJpg(polaroid) {
   ctx.font = "600 24px system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial";
   ctx.fillText("extragood.studio | @extragood.studio", rightX, blockY + blockH - 44);
 
-  const jpgUrl = canvas.toDataURL("image/jpeg", 0.92);
+  return canvas.toDataURL("image/jpeg", 0.92);
+}
 
+async function downloadPostcardJpg(polaroid) {
+  const jpgUrl = await generatePostcardJpgDataUrl(polaroid);
+  if (!jpgUrl) return;
+  const needleNum = polaroid?.needleNumber ?? polaroid?.needleId ?? "";
   const a = document.createElement("a");
   a.href = jpgUrl;
   a.download = `two-space-needles-postcard-needle-${needleNum}.jpg`;
@@ -1673,6 +1688,7 @@ export default function MapScene() {
   const [hintPosition, setHintPosition] = useState(null);
   const [anchorsVersion, setAnchorsVersion] = useState(0);
   const [creditsOpen, setCreditsOpen] = useState(false);
+  const [iosSaveImageUrl, setIosSaveImageUrl] = useState(null);
   const [polaroid, setPolaroid] = useState(null);
   const [isDeveloping, setIsDeveloping] = useState(false);
   const [visitedNeedleId, setVisitedNeedleId] = useState(null);
@@ -1744,6 +1760,7 @@ export default function MapScene() {
   const placementCommittedByPointerRef = useRef(false);
   const isPlacingDragActiveRef = useRef(false);
   const hoveredNeedleIdRef = useRef(null);
+  const mobileMenuDwellTimerRef = useRef(null);
   const projectionOverlayRef = useRef(null);
   const projectionReadyRef = useRef(false);
 
@@ -1907,6 +1924,10 @@ export default function MapScene() {
       const overMenu = isOverMenu(path) || isOverMenu(atPoint);
       if (!isPointerOnMapSurface(e)) {
         if (!overMenu) {
+          if (mobileMenuDwellTimerRef.current) {
+            clearTimeout(mobileMenuDwellTimerRef.current);
+            mobileMenuDwellTimerRef.current = null;
+          }
           setHoveredNeedleId(null);
           setMenuAnchorXY(null);
         }
@@ -1940,16 +1961,42 @@ export default function MapScene() {
           const inNearest = nearest.id != null && nearest.d < FOOTPRINT_RADIUS_M;
           const originalCloser = inOriginal && (!inNearest || distToOriginal <= nearest.d);
           if (originalCloser) {
+            if (isMobileView) {
+              if (mobileMenuDwellTimerRef.current) {
+                clearTimeout(mobileMenuDwellTimerRef.current);
+                mobileMenuDwellTimerRef.current = null;
+              }
+              mobileMenuDwellTimerRef.current = setTimeout(() => {
+                mobileMenuDwellTimerRef.current = null;
+                setHoveredNeedleId(null);
+                setMenuAnchorXY(null);
+              }, MOBILE_MENU_DWELL_MS);
+            }
             setHoveredNeedleId(ORIGINAL_NEEDLE_ID);
           } else if (inNearest) {
+            if (isMobileView) {
+              if (mobileMenuDwellTimerRef.current) {
+                clearTimeout(mobileMenuDwellTimerRef.current);
+                mobileMenuDwellTimerRef.current = null;
+              }
+              mobileMenuDwellTimerRef.current = setTimeout(() => {
+                mobileMenuDwellTimerRef.current = null;
+                setHoveredNeedleId(null);
+                setMenuAnchorXY(null);
+              }, MOBILE_MENU_DWELL_MS);
+            }
             setHoveredNeedleId(nearest.id);
           } else {
+            if (!isMobileView) {
+              setHoveredNeedleId(null);
+              setMenuAnchorXY(null);
+            }
+          }
+        } else {
+          if (!isMobileView) {
             setHoveredNeedleId(null);
             setMenuAnchorXY(null);
           }
-        } else {
-          setHoveredNeedleId(null);
-          setMenuAnchorXY(null);
         }
         if (hoveredNeedleIdRef.current == null && pos) {
           const list = placementsRef.current;
@@ -1987,8 +2034,15 @@ export default function MapScene() {
       hoverLatLngRef.current = null;
       setHoverLatLng(null);
       setHintNeedleId(null);
-      setHoveredNeedleId(null);
-      setMenuAnchorXY(null);
+      if (!isMobileView) {
+        if (mobileMenuDwellTimerRef.current) {
+          clearTimeout(mobileMenuDwellTimerRef.current);
+          mobileMenuDwellTimerRef.current = null;
+        }
+        setHoveredNeedleId(null);
+        setMenuAnchorXY(null);
+      }
+      /* On mobile, leave menu open so dwell timer can close it (user can lift finger and tap menu). */
     };
     wrapper.addEventListener("pointermove", onPointerMove, { passive: false });
     wrapper.addEventListener("pointerleave", onPointerLeave);
@@ -2344,6 +2398,10 @@ export default function MapScene() {
             setHoveredNeedleId(id);
             return;
           }
+        }
+        if (mobileMenuDwellTimerRef.current) {
+          clearTimeout(mobileMenuDwellTimerRef.current);
+          mobileMenuDwellTimerRef.current = null;
         }
         setHoveredNeedleId(null);
         setMenuAnchorXY(null);
@@ -2703,6 +2761,10 @@ export default function MapScene() {
       const xy = latLngToContainerPixel(mapEl, rect, { lat: placement.lat, lng: placement.lng });
       if (xy) setPoofAt({ x: xy.x, y: xy.y });
     }
+    if (mobileMenuDwellTimerRef.current) {
+      clearTimeout(mobileMenuDwellTimerRef.current);
+      mobileMenuDwellTimerRef.current = null;
+    }
     setHoveredNeedleId(null);
     setMenuAnchorXY(null);
     if (willHaveNoNeedles) setIsPlacing(true);
@@ -2719,6 +2781,10 @@ export default function MapScene() {
     placedModelsRef.current.delete(id);
     setMovingNeedleId(id);
     setIsPlacing(true);
+    if (mobileMenuDwellTimerRef.current) {
+      clearTimeout(mobileMenuDwellTimerRef.current);
+      mobileMenuDwellTimerRef.current = null;
+    }
     setHoveredNeedleId(null);
     setMenuAnchorXY(null);
   };
@@ -2733,6 +2799,10 @@ export default function MapScene() {
       visitAudioRef.current.volume = 0.5;
       visitAudioRef.current.currentTime = 0;
       visitAudioRef.current.play().catch((err) => console.error("visit play failed", err));
+    }
+    if (mobileMenuDwellTimerRef.current) {
+      clearTimeout(mobileMenuDwellTimerRef.current);
+      mobileMenuDwellTimerRef.current = null;
     }
     setHoveredNeedleId(null);
     setMenuAnchorXY(null);
@@ -2776,7 +2846,6 @@ export default function MapScene() {
   };
 
   const onExitVisit = (resetCamera = true) => {
-    playShootingSound();
     if (viewModeFlyTimeoutRef.current) {
       clearTimeout(viewModeFlyTimeoutRef.current);
       viewModeFlyTimeoutRef.current = null;
@@ -2815,12 +2884,11 @@ export default function MapScene() {
   }, []);
 
   const dismissPolaroid = useCallback(() => {
-    playShootingSound();
     polaroidAbortRef.current?.abort();
     polaroidAbortRef.current = null;
     setPolaroid(null);
     setIsDeveloping(false);
-  }, [playShootingSound]);
+  }, []);
 
   useEffect(() => {
     const id = polaroid?.id;
@@ -3004,6 +3072,10 @@ export default function MapScene() {
     placed.clear();
     setPlacements([]);
     setMovingNeedleId(null);
+    if (mobileMenuDwellTimerRef.current) {
+      clearTimeout(mobileMenuDwellTimerRef.current);
+      mobileMenuDwellTimerRef.current = null;
+    }
     setHoveredNeedleId(null);
     setPanelNeedleId(null);
     setVisitMode(false);
@@ -3018,14 +3090,18 @@ export default function MapScene() {
     }
   };
 
-  // Mobile: haptic feedback on any button press (pointerdown only; cooldown avoids double-trigger with click)
+  // Button feedback: haptic (mobile) + sound on pointerdown so it fires immediately when touched (no click delay).
+  // Use capture phase so we run before any child (e.g. needle menu) calls stopPropagation, so Delete and all buttons get sound.
   useEffect(() => {
     const onPointerDown = (e) => {
-      if (e.target.closest?.("#root") && e.target.closest?.("button")) hapticTap("light");
+      const btn = e.target.closest?.("#root") && e.target.closest?.("button");
+      if (!btn || btn.disabled) return;
+      hapticTap("light");
+      playShootingSound();
     };
-    document.addEventListener("pointerdown", onPointerDown, { passive: true });
-    return () => document.removeEventListener("pointerdown", onPointerDown);
-  }, []);
+    document.addEventListener("pointerdown", onPointerDown, { passive: true, capture: true });
+    return () => document.removeEventListener("pointerdown", onPointerDown, { capture: true });
+  }, [playShootingSound]);
 
   return (
     <div className="exhibit-page">
@@ -3046,10 +3122,7 @@ export default function MapScene() {
       <button
         type="button"
         className="exhibit-audio-button"
-        onClick={() => {
-          playShootingSound();
-          openAudioModal();
-        }}
+        onClick={() => openAudioModal()}
         aria-label="Open audio settings"
       >
         Audio
@@ -3160,6 +3233,12 @@ export default function MapScene() {
                       placeNeedleAudioRef.current.currentTime = 0;
                       placeNeedleAudioRef.current.play().catch((err) => console.error("place needle sound play failed", err));
                     }
+                    if (mobileMenuDwellTimerRef.current) {
+                      clearTimeout(mobileMenuDwellTimerRef.current);
+                      mobileMenuDwellTimerRef.current = null;
+                    }
+                    setHoveredNeedleId(null);
+                    setMenuAnchorXY(null);
                     setIsPlacing(true);
                   }}
                   aria-label="Place Needle"
@@ -3213,6 +3292,15 @@ export default function MapScene() {
                       flexDirection: "column",
                       gap: 0,
                     }}
+                    onPointerDown={(e) => {
+                      e.stopPropagation();
+                      if (isMobileView) e.preventDefault();
+                    }}
+                    onPointerUp={(e) => {
+                      e.stopPropagation();
+                      if (isMobileView) e.preventDefault();
+                    }}
+                    onClick={(e) => e.stopPropagation()}
                   >
                     {isOriginal && (
                       <div className="needle-action-menu-title" aria-hidden>
@@ -3220,7 +3308,18 @@ export default function MapScene() {
                       </div>
                     )}
                     {!isOriginal && (
-                      <button type="button" onClick={() => onMoveNeedle(hoveredNeedleId)}>
+                      <button
+                        type="button"
+                        onClick={() => !isMobileView && onMoveNeedle(hoveredNeedleId)}
+                        onPointerUp={(e) => {
+                          if (isMobileView) {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            onMoveNeedle(hoveredNeedleId);
+                          }
+                        }}
+                        aria-label="Move this needle"
+                      >
                         Move Needle
                       </button>
                     )}
@@ -3228,13 +3327,32 @@ export default function MapScene() {
                       <button
                         type="button"
                         className="exhibit-btn-destructive"
-                        onClick={() => onRemoveNeedle(hoveredNeedleId)}
+                        onClick={() => !isMobileView && onRemoveNeedle(hoveredNeedleId)}
+                        onPointerUp={(e) => {
+                          if (isMobileView) {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            onRemoveNeedle(hoveredNeedleId);
+                          }
+                        }}
+                        aria-label="Remove this needle"
                       >
                         Remove Needle
                       </button>
                     )}
-                    <button type="button" onClick={() => onVisitNeedle(hoveredNeedleId)}>
-                      Visit Needle
+                    <button
+                      type="button"
+                      onClick={() => !isMobileView && onVisitNeedle(hoveredNeedleId)}
+                      onPointerUp={(e) => {
+                        if (isMobileView) {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          onVisitNeedle(hoveredNeedleId);
+                        }
+                      }}
+                      aria-label="View this needle"
+                    >
+                      View Needle
                     </button>
                   </div>
                 )
@@ -3408,10 +3526,7 @@ export default function MapScene() {
           <button
             type="button"
             className="exhibit-desktop-controls-credits"
-            onClick={() => {
-              playShootingSound();
-              setCreditsOpen(true);
-            }}
+            onClick={() => setCreditsOpen(true)}
             aria-label="Open credits"
           >
             Credits
@@ -3430,10 +3545,7 @@ export default function MapScene() {
           <button
             type="button"
             className="exhibit-desktop-controls-audio"
-            onClick={() => {
-              playShootingSound();
-              openAudioModal();
-            }}
+            onClick={() => openAudioModal()}
             aria-label="Open audio settings"
           >
             Audio
@@ -3444,10 +3556,7 @@ export default function MapScene() {
             <button
               type="button"
               className="mobile-topbar-credits"
-              onClick={() => {
-                playShootingSound();
-                setCreditsOpen(true);
-              }}
+              onClick={() => setCreditsOpen(true)}
               aria-label="Open credits"
             >
               Credits
@@ -3466,10 +3575,7 @@ export default function MapScene() {
             <button
               type="button"
               className="mobile-topbar-audio"
-              onClick={() => {
-                playShootingSound();
-                openAudioModal();
-              }}
+              onClick={() => openAudioModal()}
               aria-label="Open audio settings"
             >
               Audio
@@ -3589,14 +3695,61 @@ export default function MapScene() {
                   type="button"
                   className="exhibit-polaroid-download"
                   disabled={!polaroid.dataUrl}
-                  onClick={() => {
-                    playShootingSound();
-                    if (polaroid.dataUrl) downloadPostcardJpg(polaroid);
+                  onClick={async () => {
+                    if (!polaroid.dataUrl) return;
+                    if (isIosSafari()) {
+                      const url = await generatePostcardJpgDataUrl(polaroid);
+                      if (url) setIosSaveImageUrl(url);
+                    } else {
+                      downloadPostcardJpg(polaroid);
+                    }
                   }}
                 >
-                  Download photo
+                  Save photo
                 </button>
               </div>
+            </div>
+          </div>
+        </>
+      )}
+      {iosSaveImageUrl && (
+        <>
+          <div
+            className="exhibit-polaroid-backdrop exhibit-ios-save-backdrop"
+            aria-hidden
+            onClick={() => setIosSaveImageUrl(null)}
+          />
+          <div
+            className="exhibit-polaroid-wrap exhibit-ios-save-modal"
+            role="dialog"
+            aria-label="Save photo to Photos"
+            aria-modal="true"
+          >
+            <div className="exhibit-polaroid-card exhibit-ios-save-card">
+              <button
+                type="button"
+                className="exhibit-polaroid-close"
+                onClick={() => setIosSaveImageUrl(null)}
+                aria-label="Close"
+              >
+                ×
+              </button>
+              <p className="exhibit-ios-save-instruction">
+                To save: long-press the image, then tap &ldquo;Save to Photos&rdquo;.
+              </p>
+              <img
+                src={iosSaveImageUrl}
+                alt="Postcard to save"
+                className="exhibit-ios-save-img"
+                draggable={false}
+              />
+              <button
+                type="button"
+                className="exhibit-polaroid-download exhibit-ios-save-close"
+                onClick={() => setIosSaveImageUrl(null)}
+              >
+                Close
+              </button>
             </div>
           </div>
         </>
@@ -3604,10 +3757,7 @@ export default function MapScene() {
       <button
         type="button"
         className="exhibit-credits-button"
-        onClick={() => {
-          playShootingSound();
-          setCreditsOpen(true);
-        }}
+        onClick={() => setCreditsOpen(true)}
         aria-label="Open credits"
       >
         Credits
@@ -3617,10 +3767,7 @@ export default function MapScene() {
           <div
             className="exhibit-credits-backdrop"
             aria-hidden
-            onClick={() => {
-              playShootingSound();
-              setCreditsOpen(false);
-            }}
+            onClick={() => setCreditsOpen(false)}
           />
           <div className="exhibit-credits-modal" role="dialog" aria-labelledby="credits-title" aria-modal="true">
             <div className="exhibit-credits-modal-inner">
@@ -3629,10 +3776,7 @@ export default function MapScene() {
                 <button
                   type="button"
                   className="exhibit-credits-modal-close"
-                  onClick={() => {
-                    playShootingSound();
-                    setCreditsOpen(false);
-                  }}
+                  onClick={() => setCreditsOpen(false)}
                   aria-label="Close credits"
                 >
                   ×
