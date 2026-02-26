@@ -211,15 +211,32 @@ button:focus-visible {
   touch-action: none;
 }
 
-/* Mobile-only: floating Place Needle button inside map (desktop unchanged) */
-.needle-place-overlay-mobile {
+/* On-map button cluster: Place Needle (primary) + Take Photo (in View Mode only); bottom-center */
+.needle-map-button-cluster {
   position: absolute;
   left: 50%;
   transform: translateX(-50%);
   bottom: 16px;
   z-index: 9998;
-  padding: 10px 24px;
-  font-size: 0.95rem;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  flex-wrap: nowrap;
+  pointer-events: none;
+}
+.needle-map-button-cluster .needle-place-overlay,
+.needle-map-button-cluster .needle-take-photo {
+  pointer-events: auto;
+}
+
+/* Place Needle + Take Photo: same size (compact) in map cluster */
+.needle-place-overlay,
+.needle-map-button-cluster .needle-take-photo {
+  flex-shrink: 0;
+  padding: 10px 20px;
+  font-size: 0.9rem;
   font-weight: 600;
   font-family: "Inter", sans-serif;
   background-color: var(--mustard);
@@ -227,7 +244,13 @@ button:focus-visible {
   border: 2px solid var(--black);
   border-radius: 0;
   cursor: pointer;
-  pointer-events: auto;
+}
+@media (max-width: 480px) {
+  .needle-map-button-cluster .needle-place-overlay,
+  .needle-map-button-cluster .needle-take-photo {
+    padding: 8px 14px;
+    font-size: 0.8rem;
+  }
 }
 
 /* Mobile only: stronger press feedback + touch-action (no desktop change) */
@@ -439,77 +462,99 @@ button:focus-visible {
   filter: saturate(0.6);
 }
 
-/* ----- Data section: two columns below buttons ----- */
+/* ----- Data section: directly under map, above controls; same width as map ----- */
 .exhibit-data {
   flex-shrink: 0;
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 1rem;
+  width: 100%;
+  box-sizing: border-box;
   padding: 0.75rem 1.25rem;
+  margin: 0;
   background-color: var(--fair-blue);
   border-top: 2px solid var(--mustard);
   font-size: 0.75rem;
   font-family: "Inter", sans-serif;
-}
-
-.exhibit-data .exhibit-live-estimate,
-.exhibit-data .exhibit-civic {
   min-width: 0;
 }
 
-.exhibit-live-estimate {
-  margin-bottom: 0.5rem;
+/* One vertical divider at fixed X; left block | divider | right block */
+.exhibit-stats-panel {
+  display: grid;
+  grid-template-columns: 1.22fr 2px 0.78fr;
+  column-gap: 12px;
+  align-items: start;
   min-width: 0;
 }
-.exhibit-live-estimate h3,
-.exhibit-civic h3 {
+.exhibit-panel-divider {
+  width: 2px;
+  background: #f6e05e;
+  align-self: stretch;
+  border-radius: 1px;
+}
+
+.exhibit-live-block,
+.exhibit-civic-block {
+  display: grid;
+  grid-auto-rows: min-content;
+  row-gap: 6px;
+  min-width: 0;
+}
+.exhibit-live-row,
+.exhibit-civic-row {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  column-gap: 10px;
+  align-items: baseline;
+  line-height: 1.35;
+  min-width: 0;
+}
+
+.exhibit-key-title-live,
+.exhibit-key-title-civic {
   font-family: "League Spartan", sans-serif;
   font-size: 0.65rem;
   font-weight: 600;
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--mustard);
-  margin: 0 0 0.35rem 0;
+  margin: 0 0 0.1rem 0;
 }
 
-.exhibit-live-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  gap: 0.5rem;
-  margin-bottom: 0.12rem;
-  line-height: 1.35;
-}
+/* Live label: cap so it doesn't steal space */
 .exhibit-live-label {
+  max-width: 16ch;
   color: var(--white);
   opacity: 0.9;
-  flex-shrink: 0;
   min-width: 0;
+  white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  white-space: nowrap;
 }
 .exhibit-live-value {
   font-weight: 500;
   color: var(--white);
-  min-width: 4.5rem;
   text-align: right;
-  flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: clip;
+  min-width: 0;
 }
 
-.exhibit-civic .exhibit-civic-row {
-  display: flex;
-  justify-content: space-between;
-  margin-bottom: 0.12rem;
-  line-height: 1.35;
-}
-.exhibit-civic .exhibit-civic-label {
+.exhibit-civic-label {
   color: var(--white);
   opacity: 0.9;
+  min-width: 0;
+  white-space: nowrap;
 }
-.exhibit-civic .exhibit-civic-value {
+.exhibit-civic-value {
   font-weight: 500;
   color: var(--white);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: clip;
+  min-width: 0;
 }
 .exhibit-civic .exhibit-civic-helper {
   margin: 0.2rem 0 0.5rem 0;
@@ -519,6 +564,31 @@ button:focus-visible {
   line-height: 1.3;
   font-style: normal;
   font-weight: 400;
+}
+
+/* Mobile (≤640px): shorter labels, compact values, same divider */
+@media (max-width: 640px) {
+  .exhibit-live-block,
+  .exhibit-civic-block {
+    row-gap: 4px;
+  }
+  .exhibit-live-row,
+  .exhibit-civic-row {
+    grid-template-columns: max-content 1fr;
+    column-gap: 8px;
+  }
+  .exhibit-live-label,
+  .exhibit-civic-label {
+    font-size: 12px;
+    max-width: none;
+  }
+  .exhibit-live-value,
+  .exhibit-civic-value {
+    text-align: right;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: clip;
+  }
 }
 
 /* Place another: mustard button, no gradient burst */
@@ -745,23 +815,6 @@ button:focus-visible {
   margin-bottom: 6px;
 }
 
-/* Registration marks: sharp squares (Expo-era) */
-.exhibit-registration-top-left,
-.exhibit-registration-top-right,
-.exhibit-registration-bottom-left,
-.exhibit-registration-bottom-right {
-  position: absolute;
-  width: 6px;
-  height: 6px;
-  background-color: var(--mustard);
-  border: 1px solid var(--black);
-  z-index: 2;
-}
-.exhibit-registration-top-left { top: 14px; left: 14px; }
-.exhibit-registration-top-right { top: 14px; right: 14px; }
-.exhibit-registration-bottom-left { bottom: 14px; left: 14px; }
-.exhibit-registration-bottom-right { bottom: 14px; right: 14px; }
-
 /* ----- Desktop: full viewport immersive ----- */
 @media (min-width: 900px) {
   .exhibit-page {
@@ -786,10 +839,11 @@ button:focus-visible {
     max-height: none;
   }
 
-  /* Info panel: fixed max width, right-aligned (does not stretch full screen) */
+  /* Info panel: fixed max width, right-aligned; key rows use single grid with divider */
   .exhibit-data {
     max-width: 640px;
     margin-left: auto;
+    box-sizing: border-box;
   }
 
   .exhibit-header .exhibit-title {
@@ -828,8 +882,115 @@ button:focus-visible {
     order: 1;
     max-width: none;
   }
-  .exhibit-data {
-    grid-template-columns: 1fr;
+}
+
+/* Desktop only: Credits + Audio + Erase in one row below panels */
+.exhibit-desktop-controls {
+  display: none;
+}
+@media (min-width: 641px) {
+  .exhibit-audio-button,
+  .exhibit-credits-button {
+    display: none !important;
+  }
+  .exhibit-buttons-section {
+    display: none !important;
+  }
+  .exhibit-desktop-controls {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    column-gap: 10px;
+    align-items: center;
+    width: 100%;
+    box-sizing: border-box;
+    padding: 1rem 1.5rem;
+    margin: 0;
+    background-color: var(--fair-blue);
+    border-top: 2px solid var(--mustard);
+    flex-shrink: 0;
+    white-space: nowrap;
+  }
+  .exhibit-desktop-controls-credits,
+  .exhibit-desktop-controls-audio {
+    padding: 6px 12px;
+    font-size: 0.75rem;
+    background-color: var(--mustard);
+    color: var(--black);
+    border: 2px solid var(--black);
+    border-radius: 0;
+    font-family: "Inter", sans-serif;
+    cursor: pointer;
+  }
+  .exhibit-desktop-controls-credits {
+    font-size: 0.7rem;
+  }
+  .exhibit-desktop-controls-credits:hover,
+  .exhibit-desktop-controls-audio:hover {
+    filter: brightness(1.08);
+  }
+  .exhibit-desktop-controls-erase {
+    justify-self: stretch;
+    min-width: 0;
+    background-color: var(--mustard);
+    color: var(--black);
+    border: 2px solid var(--black);
+  }
+  .exhibit-desktop-controls-erase:hover:not(:disabled) {
+    filter: brightness(1.08);
+  }
+}
+
+/* Mobile topbar: Credits + Audio + Erase in one row (640px) */
+.mobile-topbar {
+  display: none;
+}
+@media (max-width: 640px) {
+  .exhibit-audio-button,
+  .exhibit-credits-button {
+    display: none !important;
+  }
+  .exhibit-buttons-section > .exhibit-btn-clear {
+    display: none !important;
+  }
+  .mobile-topbar {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    column-gap: 10px;
+    align-items: center;
+    width: 100%;
+    min-height: 44px;
+    padding: 0;
+    margin: 0 0 0.75rem 0;
+    white-space: nowrap;
+  }
+  .mobile-topbar .mobile-topbar-erase {
+    justify-self: stretch;
+    width: 100%;
+    min-height: 44px;
+    background-color: var(--mustard);
+    color: var(--black);
+    border: 2px solid var(--black);
+  }
+  .mobile-topbar .mobile-topbar-erase:hover:not(:disabled) {
+    filter: brightness(1.08);
+  }
+  .mobile-topbar-credits,
+  .mobile-topbar-audio {
+    flex-shrink: 0;
+    padding: 8px 10px;
+    min-height: 44px;
+    box-sizing: border-box;
+    font-size: 0.75rem;
+    background-color: var(--mustard);
+    color: var(--black);
+    border: 2px solid var(--black);
+    border-radius: 0;
+    font-family: "Inter", sans-serif;
+    cursor: pointer;
+  }
+  .mobile-topbar-credits:hover,
+  .mobile-topbar-audio:hover {
+    filter: brightness(1.08);
   }
 }
 

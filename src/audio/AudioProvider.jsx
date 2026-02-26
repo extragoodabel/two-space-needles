@@ -35,6 +35,8 @@ export function AudioProvider({ children }) {
   const musicEnabledRef = useRef(musicEnabled);
   musicEnabledRef.current = musicEnabled;
 
+  const MUSIC_VOLUME = 0.04; // Low so music stays background; mobile speakers often feel loud
+
   const toggleMusic = useCallback(() => {
     setMusicEnabled((prev) => {
       const next = !prev;
@@ -42,6 +44,7 @@ export function AudioProvider({ children }) {
       const el = musicAudioRef.current;
       if (el) {
         if (next) {
+          el.volume = MUSIC_VOLUME;
           el.play().catch(() => {});
         } else {
           el.pause();
@@ -96,7 +99,7 @@ export function AudioProvider({ children }) {
       // Do NOT prime SFX elements here—on mobile that can cause a burst. Prime after the guard clears.
       const el = musicAudioRef.current;
       if (el && musicEnabledRef.current) {
-        el.volume = 0.075;
+        el.volume = MUSIC_VOLUME;
         el.play().catch(() => {});
       }
       // Clear after first tap completes: on mobile, synthetic click fires after pointerup.
@@ -122,7 +125,7 @@ export function AudioProvider({ children }) {
     if (!isAudioUnlocked || !musicEnabled) return;
     const el = musicAudioRef.current;
     if (el) {
-      el.volume = 0.075;
+      el.volume = MUSIC_VOLUME;
       el.play().catch(() => {});
     }
   }, [isAudioUnlocked, musicEnabled]);

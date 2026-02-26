@@ -31,6 +31,20 @@ const PHOTO_MIN_SEPARATION_DEG = 10;
 /** Oblique offset (deg) so camera is never collinear with featured–original; enforces triangle, no stacking. */
 const PHOTO_OBLIQUE_OFFSET_DEG = 20;
 
+/** Mobile (≤640px) abbreviated labels for Live Estimate + Civic Impact panel. */
+const MOBILE_LABELS = {
+  Neighborhood: "Hood",
+  Coordinates: "Coords",
+  "Land Acquisition": "Land",
+  Rate: "Rate",
+  "Year constructed": "Year",
+  "Land required": "Land",
+  "Total Cost": "Cost",
+  Needles: "Needles",
+  "Land Acquired": "Acres",
+  "Tourism Revenue": "Revenue/yr",
+};
+
 /** Seeded PRNG (mulberry32) for deterministic placeholder env placement. Same seed => same sequence in [0,1). */
 function mulberry32(seed) {
   return function next() {
@@ -642,7 +656,7 @@ function getValuationAtLatLng(lat, lng) {
     neighborhoodLabel = matches[0].name;
   } else {
     rate = matches.reduce((sum, z) => sum + z.ratePerSqFt, 0) / matches.length;
-    neighborhoodLabel = "Border Zone: " + matches.map((z) => z.name).join(" + ");
+    neighborhoodLabel = matches.map((z) => z.name).join("/");
   }
   const seed = seedFromQuantizedLatLng(lat, lng);
   const r = seededRandom(seed);
@@ -664,12 +678,12 @@ function formatCurrency(n) {
   return `$${n.toFixed(0)}`;
 }
 
-/** Format as $X.XB/year for tourism revenue. */
+/** Format as $X.XB/yr for tourism revenue. */
 function formatCurrencyPerYear(n) {
-  if (n >= 1e9) return `$${(n / 1e9).toFixed(1)}B/year`;
-  if (n >= 1e6) return `$${(n / 1e6).toFixed(1)}M/year`;
-  if (n >= 1e3) return `$${(n / 1e3).toFixed(1)}K/year`;
-  return `$${n.toFixed(1)}/year`;
+  if (n >= 1e9) return `$${(n / 1e9).toFixed(1)}B/yr`;
+  if (n >= 1e6) return `$${(n / 1e6).toFixed(1)}M/yr`;
+  if (n >= 1e3) return `$${(n / 1e3).toFixed(1)}K/yr`;
+  return `$${n.toFixed(1)}/yr`;
 }
 
 function formatRate(ratePerSqFt) {
@@ -685,6 +699,11 @@ function formatLatLngDirectional(lat, lng, separator = ", ") {
   const latStr = `${Math.abs(la).toFixed(5)}° ${latDir}`;
   const lngStr = `${Math.abs(lo).toFixed(5)}° ${lngDir}`;
   return `${latStr}${separator}${lngStr}`;
+}
+
+/** Mobile-only: compact coords as lat, lng (no N/W). */
+function formatLatLngMobile(lat, lng) {
+  return `${Number(lat).toFixed(5)}, ${Number(lng).toFixed(5)}`;
 }
 
 function formatCoordLabel(lat, lng) {
@@ -1661,6 +1680,15 @@ export default function MapScene() {
   const [batteryWarning, setBatteryWarning] = useState(false);
   const [batteryBlackout, setBatteryBlackout] = useState(false);
   const [asciiNeedle, setAsciiNeedle] = useState(false);
+  const [isMobilePanel, setIsMobilePanel] = useState(
+    () => (typeof window !== "undefined" ? window.matchMedia("(max-width: 640px)").matches : false)
+  );
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 640px)");
+    const handler = () => setIsMobilePanel(mq.matches);
+    mq.addEventListener("change", handler);
+    return () => mq.removeEventListener("change", handler);
+  }, []);
   const polaroidAbortRef = useRef(null);
   const visitModeRef = useRef(visitMode);
   visitModeRef.current = visitMode;
@@ -2118,64 +2146,43 @@ export default function MapScene() {
       const newCount = placementCountRef.current + 1;
       const elevation = await getElevationAt(at.lat, at.lng);
       const isWater = isWaterPlacement(at.lat, at.lng, elevation);
-      if (!isUnlockingRef?.current && sfxEnabled) {
-        if (isOnUWCampusOrStadiums(at.lat, at.lng)) {
-          const dogEl = dogBarkAudioRef.current;
-          if (dogEl) {
-            dogEl.volume = 0.9;
-            dogEl.currentTime = 0;
-            dogEl.play().catch((err) => console.error("audio play failed", err));
-          }
-        } else if (isAtLumenField(at.lat, at.lng)) {
-          const stompEl = crowdStompAudioRef.current;
-          if (stompEl) {
-            stompEl.volume = 0.9;
-            stompEl.currentTime = 0;
-            stompEl.play().catch((err) => console.error("audio play failed", err));
-          }
-        } else if (isAtTMobileParkOrAdjacent(at.lat, at.lng)) {
-          const organEl = baseballOrganAudioRef.current;
-          if (organEl) {
-            organEl.volume = 0.9;
-            organEl.currentTime = 0;
-            organEl.play().catch((err) => console.error("audio play failed", err));
-          }
-        } else if (isAtClimatePledgeArena(at.lat, at.lng)) {
-          const hornEl = airHornAudioRef.current;
-          if (hornEl) {
-            hornEl.volume = 0.9;
-            hornEl.currentTime = 0;
-            hornEl.play().catch((err) => console.error("audio play failed", err));
-          }
-        } else if (isAtMoPop(at.lat, at.lng) || isAtChihuly(at.lat, at.lng) || isAtPacificScienceCenter(at.lat, at.lng)) {
-          const glassEl = glassSmashAudioRef.current;
-          if (glassEl) {
-            glassEl.volume = 0.9;
-            glassEl.currentTime = 0;
-            glassEl.play().catch((err) => console.error("audio play failed", err));
-          }
-        } else if (isWater) {
-          const splashEl = splashAudioRef.current;
-          if (splashEl) {
-            splashEl.volume = 0.9;
-            splashEl.currentTime = 0;
-            splashEl.play().catch((err) => console.error("audio play failed", err));
-          }
+      const mayPlayDropSound = sfxEnabled && (!isUnlockingRef?.current || newCount === 1);
+      const needsPrime = newCount === 1 && isUnlockingRef?.current;
+      const playDropSound = (el, vol = 0.9) => {
+        if (!el) return;
+        if (needsPrime) {
+          el.volume = 0;
+          el.currentTime = 0;
+          el.play().catch(() => {});
+          requestAnimationFrame(() => {
+            el.volume = vol;
+            el.currentTime = 0;
+            el.play().catch((err) => console.error("audio play failed", err));
+          });
         } else {
-          const crunchEl = crunchAudioRef.current;
-          if (crunchEl) {
-            crunchEl.volume = 0.9;
-            crunchEl.currentTime = 0;
-            crunchEl.play().catch((err) => console.error("audio play failed", err));
-          }
+          el.volume = vol;
+          el.currentTime = 0;
+          el.play().catch((err) => console.error("audio play failed", err));
+        }
+      };
+      if (mayPlayDropSound) {
+        if (isOnUWCampusOrStadiums(at.lat, at.lng)) {
+          playDropSound(dogBarkAudioRef.current);
+        } else if (isAtLumenField(at.lat, at.lng)) {
+          playDropSound(crowdStompAudioRef.current);
+        } else if (isAtTMobileParkOrAdjacent(at.lat, at.lng)) {
+          playDropSound(baseballOrganAudioRef.current);
+        } else if (isAtClimatePledgeArena(at.lat, at.lng)) {
+          playDropSound(airHornAudioRef.current);
+        } else if (isAtMoPop(at.lat, at.lng) || isAtChihuly(at.lat, at.lng) || isAtPacificScienceCenter(at.lat, at.lng)) {
+          playDropSound(glassSmashAudioRef.current);
+        } else if (isWater) {
+          playDropSound(splashAudioRef.current);
+        } else {
+          playDropSound(crunchAudioRef.current);
         }
         if (newCount >= 5 && (newCount - 5) % 10 === 0) {
-          const wilhelmEl = wilhelmAudioRef.current;
-          if (wilhelmEl) {
-            wilhelmEl.volume = 0.2;
-            wilhelmEl.currentTime = 0;
-            wilhelmEl.play().catch((err) => console.error("audio play failed", err));
-          }
+          playDropSound(wilhelmAudioRef.current, 0.2);
         }
       }
       const valuation = getValuationAtLatLng(at.lat, at.lng);
@@ -2768,7 +2775,7 @@ export default function MapScene() {
     }, VIEW_MODE_FLY_DURATION_MS + VIEW_MODE_FLY_SETTLE_MS);
   };
 
-  const onExitVisit = () => {
+  const onExitVisit = (resetCamera = true) => {
     playShootingSound();
     if (viewModeFlyTimeoutRef.current) {
       clearTimeout(viewModeFlyTimeoutRef.current);
@@ -2776,12 +2783,14 @@ export default function MapScene() {
     }
     movementDetectionEnabledRef.current = false;
     viewModeInitialPoseRef.current = null;
-    const mapEl = mapRef.current;
-    if (mapEl) {
-      mapEl.center = SEATTLE_CENTER;
-      mapEl.tilt = DEFAULT_TILT;
-      mapEl.heading = DEFAULT_HEADING;
-      mapEl.range = DEFAULT_RANGE;
+    if (resetCamera) {
+      const mapEl = mapRef.current;
+      if (mapEl) {
+        mapEl.center = SEATTLE_CENTER;
+        mapEl.tilt = DEFAULT_TILT;
+        mapEl.heading = DEFAULT_HEADING;
+        mapEl.range = DEFAULT_RANGE;
+      }
     }
     setPanelNeedleId(null);
     setVisitMode(false);
@@ -3046,10 +3055,6 @@ export default function MapScene() {
         Audio
       </button>
       <div className="exhibit-panel">
-        <span className="exhibit-registration-top-left" aria-hidden="true" />
-        <span className="exhibit-registration-top-right" aria-hidden="true" />
-        <span className="exhibit-registration-bottom-left" aria-hidden="true" />
-        <span className="exhibit-registration-bottom-right" aria-hidden="true" />
         <header className="exhibit-header">
           <h1 className="exhibit-title">PLACE NEEDLES</h1>
           <p className="exhibit-subhead">
@@ -3064,7 +3069,7 @@ export default function MapScene() {
             </a>.
           </p>
           <p className="exhibit-instructions">
-            {isMobileView && isPlacing
+            {isMobileView
               ? "Drag and release to place Needle. Observe civic impact."
               : "Click to place Needle. Observe civic impact."}
           </p>
@@ -3141,16 +3146,39 @@ export default function MapScene() {
                 </>
               );
             })()}
-            {isMobileView && !isPlacing && (
-              <button
-                type="button"
-                className="needle-place-overlay-mobile"
-                onClick={() => setIsPlacing(true)}
-                aria-label="Place Needle"
-              >
-                Place Needle
-              </button>
-            )}
+            <div className="needle-map-button-cluster">
+              {!isPlacing && (
+                <button
+                  type="button"
+                  className="needle-place-overlay"
+                  onClick={() => {
+                    if (visitMode) {
+                      onExitVisit(false);
+                    }
+                    if (!isUnlockingRef?.current && sfxEnabled && placeNeedleAudioRef.current) {
+                      placeNeedleAudioRef.current.volume = 0.5;
+                      placeNeedleAudioRef.current.currentTime = 0;
+                      placeNeedleAudioRef.current.play().catch((err) => console.error("place needle sound play failed", err));
+                    }
+                    setIsPlacing(true);
+                  }}
+                  aria-label="Place Needle"
+                >
+                  Place Needle
+                </button>
+              )}
+              {visitMode && (
+                <button
+                  type="button"
+                  className="needle-take-photo exhibit-btn-primary"
+                  disabled={isDeveloping}
+                  onClick={onTakePhoto}
+                  aria-label="Take photo"
+                >
+                  Take Photo
+                </button>
+              )}
+            </div>
             {(() => {
               const showMenu = hoveredNeedleId != null && !isPlacing && !movingNeedleId && !visitMode;
               const isOriginal = hoveredNeedleId === ORIGINAL_NEEDLE_ID;
@@ -3230,40 +3258,6 @@ export default function MapScene() {
             )}
             </div>
           </div>
-          {visitMode && (
-            <div
-              className="needle-visit-actions map-overlay"
-              style={{
-                position: "absolute",
-                bottom: 16,
-                left: "50%",
-                transform: "translateX(-50%)",
-                zIndex: 100,
-                pointerEvents: "none",
-                display: "flex",
-                alignItems: "center",
-                gap: 16,
-              }}
-            >
-              <button
-                type="button"
-                className="needle-exit-view exhibit-btn-primary"
-                style={{ pointerEvents: "auto" }}
-                onClick={onExitVisit}
-              >
-                Exit View
-              </button>
-              <button
-                type="button"
-                className="needle-take-photo exhibit-btn-primary"
-                style={{ pointerEvents: "auto" }}
-                disabled={isDeveloping}
-                onClick={onTakePhoto}
-              >
-                Take Photo
-              </button>
-            </div>
-          )}
           {photoFlash && (
             <div
               className="photo-flash-overlay map-overlay"
@@ -3283,7 +3277,204 @@ export default function MapScene() {
             </div>
           )}
         </div>
+        <div className="exhibit-data">
+          {(() => {
+            const placingValuation =
+              isPlacing && hoverLatLng
+                ? getValuationAtLatLng(hoverLatLng.lat, hoverLatLng.lng)
+                : null;
+            const showPanelNeedle = visitMode && panelNeedleId != null;
+            const isOriginalHighlighted =
+              !showPanelNeedle &&
+              !isPlacing &&
+              !movingNeedleId &&
+              !visitMode &&
+              hoveredNeedleId === ORIGINAL_NEEDLE_ID;
+            const activePlacement =
+              showPanelNeedle && panelNeedleId !== ORIGINAL_NEEDLE_ID
+                ? placements.find((p) => p.id === panelNeedleId)
+                : !showPanelNeedle &&
+                    !isPlacing &&
+                    !movingNeedleId &&
+                    !visitMode &&
+                    hoveredNeedleId != null &&
+                    hoveredNeedleId !== ORIGINAL_NEEDLE_ID
+                  ? placements.find((p) => p.id === hoveredNeedleId)
+                  : null;
+            const isOriginalInPanel = showPanelNeedle && panelNeedleId === ORIGINAL_NEEDLE_ID;
+            const movingPlacement = movingNeedleId != null ? placements.find((p) => p.id === movingNeedleId) : null;
+            const boxTitle =
+              isOriginalInPanel || isOriginalHighlighted
+                ? "Space Needle #1"
+                : activePlacement != null
+                  ? `Space Needle #${placements.findIndex((p) => p.id === (showPanelNeedle ? panelNeedleId : hoveredNeedleId)) + 2}`
+                  : "LIVE ESTIMATE";
+            const coordsSource = isPlacing && hoverLatLng
+              ? { lat: hoverLatLng.lat, lng: hoverLatLng.lng }
+              : (activePlacement || movingPlacement)
+                ? { lat: (activePlacement || movingPlacement).lat, lng: (activePlacement || movingPlacement).lng }
+                : null;
+
+            const getLabel = (desktopLabel) =>
+              isMobilePanel && MOBILE_LABELS[desktopLabel] != null ? MOBILE_LABELS[desktopLabel] : desktopLabel;
+
+            const civicRows = [
+              { civicLabel: getLabel("Needles"), civicValue: Math.round(countUpNeedles) },
+              {
+                civicLabel: getLabel("Land Acquired"),
+                civicValue: isMobilePanel ? countUpAcres.toFixed(2) : `${countUpAcres.toFixed(2)} acres`,
+              },
+              { civicLabel: getLabel("Total Cost"), civicValue: formatCurrency(countUpCost) },
+              {
+                civicLabel: getLabel("Tourism Revenue"),
+                civicValue: isMobilePanel ? formatCurrency(countUpRevenue) : formatCurrencyPerYear(countUpRevenue),
+              },
+            ];
+
+            const liveRows = isOriginalInPanel || isOriginalHighlighted
+              ? [
+                  { liveLabel: getLabel("Year constructed"), liveValue: "1962" },
+                  { liveLabel: getLabel("Land required"), liveValue: isMobilePanel ? "0.33" : "0.33 acres" },
+                  { liveLabel: getLabel("Total Cost"), liveValue: "$4.5M" },
+                  {
+                    liveLabel: getLabel("Coordinates"),
+                    liveValue:
+                      isMobilePanel
+                        ? formatLatLngMobile(SEATTLE_CENTER.lat, SEATTLE_CENTER.lng)
+                        : formatLatLngDirectional(SEATTLE_CENTER.lat, SEATTLE_CENTER.lng),
+                  },
+                ]
+              : [
+                  {
+                    liveLabel: getLabel("Neighborhood"),
+                    liveValue: placingValuation
+                      ? placingValuation.neighborhoodLabel
+                      : activePlacement
+                        ? activePlacement.neighborhoodLabel
+                        : "—",
+                  },
+                  {
+                    liveLabel: getLabel("Coordinates"),
+                    liveValue: coordsSource
+                      ? isMobilePanel
+                        ? formatLatLngMobile(coordsSource.lat, coordsSource.lng)
+                        : formatLatLngDirectional(coordsSource.lat, coordsSource.lng)
+                      : "—",
+                  },
+                  {
+                    liveLabel: getLabel("Land Acquisition"),
+                    liveValue: placingValuation
+                      ? formatCurrency(placingValuation.landValue)
+                      : activePlacement != null && activePlacement.landValue != null
+                        ? formatCurrency(activePlacement.landValue)
+                        : "—",
+                  },
+                  {
+                    liveLabel: getLabel("Rate"),
+                    liveValue: placingValuation
+                      ? formatRate(placingValuation.ratePerSqFt)
+                      : activePlacement != null && activePlacement.ratePerSqFt != null
+                        ? formatRate(activePlacement.ratePerSqFt)
+                        : "—",
+                  },
+                ];
+
+            return (
+              <div className="exhibit-stats-panel">
+                <div className="exhibit-live-block">
+                  <h3 className="exhibit-key-title-live">{boxTitle}</h3>
+                  {liveRows.map((row, i) => (
+                    <div key={i} className="exhibit-live-row">
+                      <span className="exhibit-live-label">{row.liveLabel}</span>
+                      <span className="exhibit-live-value">{row.liveValue}</span>
+                    </div>
+                  ))}
+                </div>
+                <div className="exhibit-panel-divider" aria-hidden />
+                <div className="exhibit-civic-block">
+                  <h3 className="exhibit-key-title-civic">CIVIC IMPACT</h3>
+                  {civicRows.map((row, i) => (
+                    <div key={i} className="exhibit-civic-row">
+                      <span className="exhibit-civic-label">{row.civicLabel}</span>
+                      <span className="exhibit-civic-value">{row.civicValue}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })()}
+        </div>
+        <div className="exhibit-desktop-controls">
+          <button
+            type="button"
+            className="exhibit-desktop-controls-credits"
+            onClick={() => {
+              playShootingSound();
+              setCreditsOpen(true);
+            }}
+            aria-label="Open credits"
+          >
+            Credits
+          </button>
+          <button
+            type="button"
+            className="exhibit-desktop-controls-erase exhibit-btn-clear"
+            disabled={placements.length < 1}
+            onClick={() => {
+              if (placements.length < 1) return;
+              onClearNeedles();
+            }}
+          >
+            Erase Needles
+          </button>
+          <button
+            type="button"
+            className="exhibit-desktop-controls-audio"
+            onClick={() => {
+              playShootingSound();
+              openAudioModal();
+            }}
+            aria-label="Open audio settings"
+          >
+            Audio
+          </button>
+        </div>
         <div className="exhibit-buttons-section">
+          <div className="mobile-topbar">
+            <button
+              type="button"
+              className="mobile-topbar-credits"
+              onClick={() => {
+                playShootingSound();
+                setCreditsOpen(true);
+              }}
+              aria-label="Open credits"
+            >
+              Credits
+            </button>
+            <button
+              type="button"
+              className="mobile-topbar-erase exhibit-btn-clear"
+              disabled={placements.length < 1}
+              onClick={() => {
+                if (placements.length < 1) return;
+                onClearNeedles();
+              }}
+            >
+              Erase Needles
+            </button>
+            <button
+              type="button"
+              className="mobile-topbar-audio"
+              onClick={() => {
+                playShootingSound();
+                openAudioModal();
+              }}
+              aria-label="Open audio settings"
+            >
+              Audio
+            </button>
+          </div>
           <button
             type="button"
             className="exhibit-btn-clear"
@@ -3295,157 +3486,6 @@ export default function MapScene() {
           >
             Erase Needles
           </button>
-          {!isMobileView && (
-            <button
-              type="button"
-              className="exhibit-place-another"
-              disabled={(placements.length < 1 && !isPlacing) || movingNeedleId != null}
-              onClick={() => {
-                if ((placements.length < 1 && !isPlacing) || movingNeedleId != null) return;
-                if (!isUnlockingRef?.current && sfxEnabled && placeNeedleAudioRef.current) {
-                  placeNeedleAudioRef.current.volume = 0.5;
-                  placeNeedleAudioRef.current.currentTime = 0;
-                  placeNeedleAudioRef.current.play().catch((err) => console.error("place needle sound play failed", err));
-                }
-                setPanelNeedleId(null);
-                setIsPlacing(true);
-              }}
-            >
-              Place Needle
-            </button>
-          )}
-        </div>
-        <div className="exhibit-data">
-          <div className="exhibit-live-estimate">
-            {(() => {
-              const placingValuation =
-                isPlacing && hoverLatLng
-                  ? getValuationAtLatLng(hoverLatLng.lat, hoverLatLng.lng)
-                  : null;
-              const showPanelNeedle = visitMode && panelNeedleId != null;
-              const isOriginalHighlighted =
-                !showPanelNeedle &&
-                !isPlacing &&
-                !movingNeedleId &&
-                !visitMode &&
-                hoveredNeedleId === ORIGINAL_NEEDLE_ID;
-              const activePlacement =
-                showPanelNeedle && panelNeedleId !== ORIGINAL_NEEDLE_ID
-                  ? placements.find((p) => p.id === panelNeedleId)
-                  : !showPanelNeedle &&
-                      !isPlacing &&
-                      !movingNeedleId &&
-                      !visitMode &&
-                      hoveredNeedleId != null &&
-                      hoveredNeedleId !== ORIGINAL_NEEDLE_ID
-                    ? placements.find((p) => p.id === hoveredNeedleId)
-                    : null;
-              const isOriginalInPanel = showPanelNeedle && panelNeedleId === ORIGINAL_NEEDLE_ID;
-              const movingPlacement = movingNeedleId != null ? placements.find((p) => p.id === movingNeedleId) : null;
-              const boxTitle =
-                isOriginalInPanel || isOriginalHighlighted
-                  ? "Space Needle #1"
-                  : activePlacement != null
-                    ? `Space Needle #${placements.findIndex((p) => p.id === (showPanelNeedle ? panelNeedleId : hoveredNeedleId)) + 2}`
-                    : "LIVE ESTIMATE";
-              const coordsSource = isPlacing && hoverLatLng
-                ? { lat: hoverLatLng.lat, lng: hoverLatLng.lng }
-                : (activePlacement || movingPlacement)
-                  ? { lat: (activePlacement || movingPlacement).lat, lng: (activePlacement || movingPlacement).lng }
-                  : null;
-              return (
-                <>
-                  <h3>{boxTitle}</h3>
-                  {isOriginalInPanel || isOriginalHighlighted ? (
-                    <>
-                      <div className="exhibit-live-row">
-                        <span className="exhibit-live-label">Year constructed</span>
-                        <span className="exhibit-live-value">1962</span>
-                      </div>
-                      <div className="exhibit-live-row">
-                        <span className="exhibit-live-label">Land required</span>
-                        <span className="exhibit-live-value">0.33 acres</span>
-                      </div>
-                      <div className="exhibit-live-row">
-                        <span className="exhibit-live-label">Total Cost</span>
-                        <span className="exhibit-live-value">$4.5M</span>
-                      </div>
-                      <div className="exhibit-live-row">
-                        <span className="exhibit-live-label">Coordinates</span>
-                        <span className="exhibit-live-value">
-                          {formatLatLngDirectional(SEATTLE_CENTER.lat, SEATTLE_CENTER.lng)}
-                        </span>
-                      </div>
-                    </>
-                  ) : (
-                    <>
-                      <div className="exhibit-live-row">
-                        <span className="exhibit-live-label">Neighborhood</span>
-                        <span className="exhibit-live-value">
-                          {placingValuation
-                            ? placingValuation.neighborhoodLabel
-                            : activePlacement
-                              ? activePlacement.neighborhoodLabel
-                              : "—"}
-                        </span>
-                      </div>
-                      <div className="exhibit-live-row">
-                        <span className="exhibit-live-label">Land Acquisition</span>
-                        <span className="exhibit-live-value">
-                          {placingValuation
-                            ? formatCurrency(placingValuation.landValue)
-                            : activePlacement != null && activePlacement.landValue != null
-                              ? formatCurrency(activePlacement.landValue)
-                              : "—"}
-                        </span>
-                      </div>
-                      <div className="exhibit-live-row">
-                        <span className="exhibit-live-label">Rate</span>
-                        <span className="exhibit-live-value">
-                          {placingValuation
-                            ? formatRate(placingValuation.ratePerSqFt)
-                            : activePlacement != null && activePlacement.ratePerSqFt != null
-                              ? formatRate(activePlacement.ratePerSqFt)
-                              : "—"}
-                        </span>
-                      </div>
-                      <div className="exhibit-live-row">
-                        <span className="exhibit-live-label">Coordinates</span>
-                        <span className="exhibit-live-value">
-                          {coordsSource ? formatLatLngDirectional(coordsSource.lat, coordsSource.lng) : "—"}
-                        </span>
-                      </div>
-                    </>
-                  )}
-                </>
-              );
-            })()}
-          </div>
-          <div className="exhibit-civic">
-            <h3>CIVIC IMPACT</h3>
-            <div className="exhibit-civic-row">
-              <span className="exhibit-civic-label">Needles Constructed</span>
-              <span className="exhibit-civic-value">{Math.round(countUpNeedles)}</span>
-            </div>
-            <div className="exhibit-civic-row">
-              <span className="exhibit-civic-label">Land Required</span>
-              <span className="exhibit-civic-value">
-                {countUpAcres.toFixed(2)} acres
-              </span>
-            </div>
-            <div className="exhibit-civic-row">
-              <span className="exhibit-civic-label">Estimated Total Cost</span>
-              <span className="exhibit-civic-value">
-                {formatCurrency(countUpCost)}
-              </span>
-            </div>
-            <div className="exhibit-civic-row">
-              <span className="exhibit-civic-label">Projected Tourism Revenue</span>
-              <span className="exhibit-civic-value">
-                {formatCurrencyPerYear(countUpRevenue)}
-              </span>
-            </div>
-          </div>
         </div>
       </div>
       {polaroid && (
