@@ -2,6 +2,10 @@
 
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 
+## Google Maps on mobile / LAN
+
+If the map shows **"Oops! Something went wrong"** when testing on your phone at `http://<your-ip>:5173`, see **[docs/MAPS_MOBILE_LAN_TROUBLESHOOTING.md](docs/MAPS_MOBILE_LAN_TROUBLESHOOTING.md)** for step-by-step fixes (referrer restrictions, APIs, billing, Map ID).
+
 Currently, two official plugins are available:
 
 - [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh

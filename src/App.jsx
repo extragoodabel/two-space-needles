@@ -1,5 +1,10 @@
+import { AudioProvider } from "./audio/AudioProvider";
 import MapScene from "./MapScene";
 
 export default function App() {
-  return <MapScene />;
+  return (
+    <AudioProvider>
+      <MapScene />
+    </AudioProvider>
+  );
 }

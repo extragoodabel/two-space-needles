@@ -207,6 +207,57 @@ button:focus-visible {
   cursor: none;
 }
 
+.exhibit-viewport-inner.is-placing-drag {
+  touch-action: none;
+}
+
+/* Mobile-only: floating Place Needle button inside map (desktop unchanged) */
+.needle-place-overlay-mobile {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: 16px;
+  z-index: 9998;
+  padding: 10px 24px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  font-family: "Inter", sans-serif;
+  background-color: var(--mustard);
+  color: var(--black);
+  border: 2px solid var(--black);
+  border-radius: 0;
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+/* Mobile only: stronger press feedback + touch-action (no desktop change) */
+@media (pointer: coarse) {
+  .exhibit-header .exhibit-subhead {
+    white-space: nowrap;
+    font-size: 0.6rem;
+  }
+  button {
+    touch-action: manipulation;
+    transition: transform 80ms ease, filter 80ms ease, box-shadow 80ms ease;
+  }
+  button:active:not(:disabled) {
+    transform: scale(0.97);
+    filter: brightness(0.92);
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2);
+  }
+  /* Place Needle: dominant CTA on mobile */
+  .exhibit-place-another {
+    padding: 10px 24px;
+    font-size: 0.95rem;
+    font-weight: 600;
+  }
+  .exhibit-place-another:active:not(:disabled) {
+    transform: scale(0.97);
+    filter: brightness(0.92);
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2);
+  }
+}
+
 .map-overlay {
   pointer-events: none;
 }
@@ -520,7 +571,8 @@ button:focus-visible {
 }
 
 /* Sound button: floating, mustard style */
-.exhibit-sound-toggle {
+.exhibit-sound-toggle,
+.exhibit-audio-button {
   position: fixed;
   top: 12px;
   right: 12px;
@@ -531,6 +583,134 @@ button:focus-visible {
   color: var(--black);
   border: 2px solid var(--black);
   border-radius: 0;
+}
+
+/* Audio modal: same visual language as credits modal */
+.exhibit-audio-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: rgba(0, 0, 0, 0.4);
+  cursor: pointer;
+}
+
+.exhibit-audio-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 1001;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  pointer-events: none;
+}
+
+.exhibit-audio-modal .exhibit-audio-modal-inner {
+  pointer-events: auto;
+  background: var(--mustard);
+  border: 2px solid var(--fair-blue);
+  max-width: 280px;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 0 0 1px var(--fair-blue);
+}
+
+.exhibit-audio-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  border-bottom: 1px solid rgba(13, 43, 79, 0.25);
+  flex-shrink: 0;
+}
+
+.exhibit-audio-modal-title {
+  font-family: "League Spartan", sans-serif;
+  font-size: 0.9rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin: 0;
+  color: var(--fair-blue);
+}
+
+.exhibit-audio-modal-close {
+  padding: 2px 8px;
+  font-size: 1.1rem;
+  line-height: 1;
+  background: transparent;
+  border: 1px solid var(--fair-blue);
+  color: var(--fair-blue);
+  cursor: pointer;
+}
+
+.exhibit-audio-modal-close:hover {
+  background: var(--fair-blue);
+  color: var(--mustard);
+}
+
+.exhibit-audio-modal-body {
+  padding: 12px;
+  color: var(--black);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.exhibit-audio-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.exhibit-audio-label {
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--black);
+}
+
+.exhibit-audio-toggle {
+  padding: 4px 12px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  background: transparent;
+  border: 2px solid var(--fair-blue);
+  color: var(--fair-blue);
+  cursor: pointer;
+}
+
+.exhibit-audio-toggle.is-on {
+  background: var(--fair-blue);
+  color: var(--mustard);
+}
+
+.exhibit-audio-toggle:hover {
+  opacity: 0.9;
+}
+
+.exhibit-audio-credits-wrap {
+  margin-top: 8px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(13, 43, 79, 0.25);
+}
+
+.exhibit-audio-see-credits {
+  display: block;
+  width: 100%;
+  padding: 8px 12px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  background: transparent;
+  border: 2px solid var(--fair-blue);
+  color: var(--fair-blue);
+  cursor: pointer;
+}
+
+.exhibit-audio-see-credits:hover {
+  background: var(--fair-blue);
+  color: var(--mustard);
 }
 
 /* Loading / error overlays: flat colors */
@@ -606,6 +786,12 @@ button:focus-visible {
     max-height: none;
   }
 
+  /* Info panel: fixed max width, right-aligned (does not stretch full screen) */
+  .exhibit-data {
+    max-width: 640px;
+    margin-left: auto;
+  }
+
   .exhibit-header .exhibit-title {
     font-size: 1.5rem;
     letter-spacing: 0.12em;
@@ -655,7 +841,7 @@ button:focus-visible {
 .exhibit-credits-button {
   position: fixed;
   bottom: 8px;
-  right: 12px;
+  left: 12px;
   z-index: 50;
   font-size: 0.7rem;
   padding: 4px 8px;
@@ -1033,7 +1219,28 @@ button:focus-visible {
   color: var(--black);
 }
 .exhibit-credits-eg-logo-wrap {
-  margin-bottom: 14px;
+  margin-bottom: 0;
+  padding-bottom: 14px;
+  border-bottom: 1px solid rgba(13, 43, 79, 0.35);
+}
+.exhibit-credits-music-block {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--black);
+  line-height: 1.4;
+}
+.exhibit-credits-music-title {
+  margin: 0 0 4px 0;
+  font-weight: 700;
+  color: var(--black);
+}
+.exhibit-credits-music-by,
+.exhibit-credits-music-link-wrap,
+.exhibit-credits-music-original {
+  margin: 0 0 4px 0;
+}
+.exhibit-credits-music-original {
+  margin-bottom: 0;
 }
 .exhibit-credits-eg-logo-link {
   display: block;
@@ -1051,6 +1258,9 @@ button:focus-visible {
 }
 .exhibit-credits-section:first-of-type {
   padding-top: 10px;
+}
+.exhibit-credits-section.exhibit-credits-music-section {
+  border-top: none;
 }
 .exhibit-credits-section:last-child {
   margin-bottom: 0;

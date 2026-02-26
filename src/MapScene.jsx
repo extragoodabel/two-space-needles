@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { setOptions, importLibrary } from "@googlemaps/js-api-loader";
 import * as THREE from "three";
+import { useAudio } from "./audio/AudioProvider";
+import { hapticTap } from "./utils/haptics";
 
 /** Real Space Needle, Seattle Center (400 Broad St) — single source of truth for map center and default needle. */
 const SEATTLE_CENTER = { lat: 47.6205, lng: -122.3493, altitude: 0 };
@@ -18,6 +20,8 @@ const FOOTPRINT_RADIUS_M = 122;
 const CIRCLE_POINTS = 32;
 /** Set true to log pointer->latLng and nearest.d in console for hover debugging. */
 const DEBUG_HOVER = false;
+/** Set true to log mobile placement drag start/commit for verification. */
+const DEBUG_MOBILE_PLACE = false;
 /** Set true to log one line per placeholder render: visited lat/lng, sceneContext, zone, heading, needles, env counts. */
 const DEBUG_PLACEHOLDER_ENV = false;
 /** Cap on env meshes (buildings, trees, POIs) in placeholder scene; addEnv() enforces this when used. */
@@ -176,6 +180,7 @@ const CREDITS = [
   { category: "Sound", name: "Glass smash", creator: "Freesound Community", license: "Pixabay", sourceUrl: "", notes: "6266" },
   { category: "Sound", name: "Camera", creator: "Irinairinafomicheva", license: "Freesound", sourceUrl: "", notes: "13695" },
   { category: "Sound", name: "Percussive hit 02", creator: "Freesound Community", license: "Pixabay", sourceUrl: "", notes: "105799" },
+  { category: "Sound", name: "Shooting sound fx", creator: "lucadialessandro", license: "Pixabay", sourceUrl: "", notes: "159024" },
 ];
 
 const NEEDLE_SCALE = 3.5 * (7 / 8);
@@ -777,7 +782,7 @@ async function downloadPostcardJpg(polaroid) {
   ctx.font = "600 34px system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial";
   ctx.textBaseline = "alphabetic";
   ctx.textAlign = "left";
-  ctx.fillText(`Greetings from Space Needle #${needleNum}`, leftX, topLineY);
+  ctx.fillText(`Greetings from Space Needle #${needleNum}!`, leftX, topLineY);
 
   ctx.fillStyle = muted;
   ctx.font = "500 26px system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial";
@@ -788,14 +793,19 @@ async function downloadPostcardJpg(polaroid) {
   ctx.fillText("twospaceneedles.org | @twospaceneedles", leftX, blockY + blockH - 44);
 
   ctx.textAlign = "right";
+  const logoAreaTop = blockY + 18;
+  const logoAreaBottom = blockY + blockH - 52;
+  const logoAreaH = logoAreaBottom - logoAreaTop;
   if (logoImg && logoImg.width > 0 && logoImg.height > 0) {
-    const logoH = 48;
+    const logoH = Math.min(logoAreaH, 100);
     const logoW = (logoImg.width / logoImg.height) * logoH;
-    ctx.drawImage(logoImg, rightX - logoW, topLineY - logoH, logoW, logoH);
+    const logoX = rightX - logoW;
+    const logoY = logoAreaTop + (logoAreaH - logoH) / 2;
+    ctx.drawImage(logoImg, logoX, logoY, logoW, logoH);
   } else {
     ctx.fillStyle = ink;
-    ctx.font = "800 30px system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial";
-    ctx.fillText("EXTRA GOOD", rightX, topLineY);
+    ctx.font = "800 36px system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial";
+    ctx.fillText("EXTRA GOOD", rightX, logoAreaTop + logoAreaH / 2 + 12);
   }
 
   ctx.fillStyle = muted;
@@ -1624,8 +1634,12 @@ export default function MapScene() {
   const [hoverLatLng, setHoverLatLng] = useState(null);
   const [overlayReady, setOverlayReady] = useState(false);
   const [placements, setPlacements] = useState([]);
-  const [soundEnabled, setSoundEnabled] = useState(true);
+  const { sfxEnabled, isUnlockingRef, openAudioModal, registerUnlockSfxCallback, registerOpenCreditsCallback, registerPlayShootingSoundCallback } = useAudio();
+  const isMobileView =
+    typeof window !== "undefined" &&
+    (window.matchMedia("(pointer: coarse)").matches || "ontouchstart" in window);
   const [isPlacing, setIsPlacing] = useState(true);
+  const [isPlacingDragActive, setIsPlacingDragActive] = useState(false);
   const [pointerOverMap, setPointerOverMap] = useState(false);
   const [hoveredNeedleId, setHoveredNeedleId] = useState(null);
   const [hintNeedleId, setHintNeedleId] = useState(null);
@@ -1691,11 +1705,16 @@ export default function MapScene() {
   const visitAudioRef = useRef(null);
   const cameraShutterAudioRef = useRef(null);
   const placeNeedleAudioRef = useRef(null);
+  const shootingSoundRef = useRef(null);
   const placementCountRef = useRef(0);
   const modelClassRef = useRef(null);
   const placedModelsRef = useRef(new Map());
   const nextPlacementIdRef = useRef(1);
   const hoverLatLngRef = useRef(null);
+  const lastPreviewLatLngRef = useRef(null);
+  const activePlacementPointerIdRef = useRef(null);
+  const placementCommittedByPointerRef = useRef(false);
+  const isPlacingDragActiveRef = useRef(false);
   const hoveredNeedleIdRef = useRef(null);
   const projectionOverlayRef = useRef(null);
   const projectionReadyRef = useRef(false);
@@ -1872,6 +1891,10 @@ export default function MapScene() {
       }
       hoverLatLngRef.current = pos;
       setHoverLatLng(pos);
+      if (isPlacingDragActiveRef.current && isPlacing && pos) {
+        lastPreviewLatLngRef.current = pos;
+        e.preventDefault();
+      }
       if (!isPlacing && !movingNeedleId && !visitMode) {
         if (overMenu) {
           /* keep current hoveredNeedleId so menu stays open while pointer is on menu */
@@ -1939,7 +1962,7 @@ export default function MapScene() {
       setHoveredNeedleId(null);
       setMenuAnchorXY(null);
     };
-    wrapper.addEventListener("pointermove", onPointerMove);
+    wrapper.addEventListener("pointermove", onPointerMove, { passive: false });
     wrapper.addEventListener("pointerleave", onPointerLeave);
     return () => {
       wrapper.removeEventListener("pointermove", onPointerMove);
@@ -2088,6 +2111,92 @@ export default function MapScene() {
       .catch(() => {});
   }, [mapSteady]);
 
+  // Commit placement at lat/lng (elevation, sfx, setPlacements, exit placement mode). Used by click (desktop) and pointerup (mobile).
+  const commitPlacementAt = useCallback(
+    async (at) => {
+      if (!at) return;
+      const newCount = placementCountRef.current + 1;
+      const elevation = await getElevationAt(at.lat, at.lng);
+      const isWater = isWaterPlacement(at.lat, at.lng, elevation);
+      if (!isUnlockingRef?.current && sfxEnabled) {
+        if (isOnUWCampusOrStadiums(at.lat, at.lng)) {
+          const dogEl = dogBarkAudioRef.current;
+          if (dogEl) {
+            dogEl.volume = 0.9;
+            dogEl.currentTime = 0;
+            dogEl.play().catch((err) => console.error("audio play failed", err));
+          }
+        } else if (isAtLumenField(at.lat, at.lng)) {
+          const stompEl = crowdStompAudioRef.current;
+          if (stompEl) {
+            stompEl.volume = 0.9;
+            stompEl.currentTime = 0;
+            stompEl.play().catch((err) => console.error("audio play failed", err));
+          }
+        } else if (isAtTMobileParkOrAdjacent(at.lat, at.lng)) {
+          const organEl = baseballOrganAudioRef.current;
+          if (organEl) {
+            organEl.volume = 0.9;
+            organEl.currentTime = 0;
+            organEl.play().catch((err) => console.error("audio play failed", err));
+          }
+        } else if (isAtClimatePledgeArena(at.lat, at.lng)) {
+          const hornEl = airHornAudioRef.current;
+          if (hornEl) {
+            hornEl.volume = 0.9;
+            hornEl.currentTime = 0;
+            hornEl.play().catch((err) => console.error("audio play failed", err));
+          }
+        } else if (isAtMoPop(at.lat, at.lng) || isAtChihuly(at.lat, at.lng) || isAtPacificScienceCenter(at.lat, at.lng)) {
+          const glassEl = glassSmashAudioRef.current;
+          if (glassEl) {
+            glassEl.volume = 0.9;
+            glassEl.currentTime = 0;
+            glassEl.play().catch((err) => console.error("audio play failed", err));
+          }
+        } else if (isWater) {
+          const splashEl = splashAudioRef.current;
+          if (splashEl) {
+            splashEl.volume = 0.9;
+            splashEl.currentTime = 0;
+            splashEl.play().catch((err) => console.error("audio play failed", err));
+          }
+        } else {
+          const crunchEl = crunchAudioRef.current;
+          if (crunchEl) {
+            crunchEl.volume = 0.9;
+            crunchEl.currentTime = 0;
+            crunchEl.play().catch((err) => console.error("audio play failed", err));
+          }
+        }
+        if (newCount >= 5 && (newCount - 5) % 10 === 0) {
+          const wilhelmEl = wilhelmAudioRef.current;
+          if (wilhelmEl) {
+            wilhelmEl.volume = 0.2;
+            wilhelmEl.currentTime = 0;
+            wilhelmEl.play().catch((err) => console.error("audio play failed", err));
+          }
+        }
+      }
+      const valuation = getValuationAtLatLng(at.lat, at.lng);
+      setPlacements((prev) => [
+        ...prev,
+        {
+          id: nextPlacementIdRef.current++,
+          lat: at.lat,
+          lng: at.lng,
+          altitude: at.altitude ?? 0,
+          neighborhoodLabel: valuation.neighborhoodLabel,
+          landValue: valuation.landValue,
+          ratePerSqFt: valuation.ratePerSqFt,
+          tourismRevenue: computeTourismRevenue(at.lat, at.lng),
+        },
+      ]);
+      setIsPlacing(false);
+    },
+    [sfxEnabled, isUnlockingRef]
+  );
+
   // Click to drop: only on map surface when placing or moving. Click-to-open menu when clicking near a needle.
   // Recompute position from click event so placement is correct in Needle View (avoids stale hover).
   useEffect(() => {
@@ -2095,6 +2204,10 @@ export default function MapScene() {
     const mapEl = mapRef.current;
     if (!wrapper || !mapEl || !overlayReady) return;
     const onClick = async (e) => {
+      if (placementCommittedByPointerRef.current) {
+        placementCommittedByPointerRef.current = false;
+        return;
+      }
       if (!isClickOnMapSurface(e)) return;
       let atFromClick = wrapperPixelToLatLngWithProjection(mapEl, e.clientX, e.clientY, projectionOverlayRef);
       if (!atFromClick) {
@@ -2107,7 +2220,7 @@ export default function MapScene() {
       if (movingNeedleId != null) {
         const elevation = await getElevationAt(at.lat, at.lng);
         const isWater = isWaterPlacement(at.lat, at.lng, elevation);
-        if (soundEnabled) {
+        if (!isUnlockingRef?.current && sfxEnabled) {
           if (isOnUWCampusOrStadiums(at.lat, at.lng)) {
             const dogEl = dogBarkAudioRef.current;
             if (dogEl) {
@@ -2230,88 +2343,85 @@ export default function MapScene() {
       }
 
       if (!isPlacing) return;
-      const newCount = placementCountRef.current + 1;
-      const elevation = await getElevationAt(at.lat, at.lng);
-      const isWater = isWaterPlacement(at.lat, at.lng, elevation);
-      if (soundEnabled) {
-        if (isOnUWCampusOrStadiums(at.lat, at.lng)) {
-          const dogEl = dogBarkAudioRef.current;
-          if (dogEl) {
-            dogEl.volume = 0.9;
-            dogEl.currentTime = 0;
-            dogEl.play().catch((err) => console.error("audio play failed", err));
-          }
-        } else if (isAtLumenField(at.lat, at.lng)) {
-          const stompEl = crowdStompAudioRef.current;
-          if (stompEl) {
-            stompEl.volume = 0.9;
-            stompEl.currentTime = 0;
-            stompEl.play().catch((err) => console.error("audio play failed", err));
-          }
-        } else if (isAtTMobileParkOrAdjacent(at.lat, at.lng)) {
-          const organEl = baseballOrganAudioRef.current;
-          if (organEl) {
-            organEl.volume = 0.9;
-            organEl.currentTime = 0;
-            organEl.play().catch((err) => console.error("audio play failed", err));
-          }
-        } else if (isAtClimatePledgeArena(at.lat, at.lng)) {
-          const hornEl = airHornAudioRef.current;
-          if (hornEl) {
-            hornEl.volume = 0.9;
-            hornEl.currentTime = 0;
-            hornEl.play().catch((err) => console.error("audio play failed", err));
-          }
-        } else if (isAtMoPop(at.lat, at.lng) || isAtChihuly(at.lat, at.lng) || isAtPacificScienceCenter(at.lat, at.lng)) {
-          const glassEl = glassSmashAudioRef.current;
-          if (glassEl) {
-            glassEl.volume = 0.9;
-            glassEl.currentTime = 0;
-            glassEl.play().catch((err) => console.error("audio play failed", err));
-          }
-        } else if (isWater) {
-          const splashEl = splashAudioRef.current;
-          if (splashEl) {
-            splashEl.volume = 0.9;
-            splashEl.currentTime = 0;
-            splashEl.play().catch((err) => console.error("audio play failed", err));
-          }
-        } else {
-          const crunchEl = crunchAudioRef.current;
-          if (crunchEl) {
-            crunchEl.volume = 0.9;
-            crunchEl.currentTime = 0;
-            crunchEl.play().catch((err) => console.error("audio play failed", err));
-          }
-        }
-        if (newCount >= 5 && (newCount - 5) % 10 === 0) {
-          const wilhelmEl = wilhelmAudioRef.current;
-          if (wilhelmEl) {
-            wilhelmEl.volume = 0.2;
-            wilhelmEl.currentTime = 0;
-            wilhelmEl.play().catch((err) => console.error("audio play failed", err));
-          }
-        }
-      }
-      const valuation = getValuationAtLatLng(at.lat, at.lng);
-      setPlacements((prev) => [
-        ...prev,
-        {
-          id: nextPlacementIdRef.current++,
-          lat: at.lat,
-          lng: at.lng,
-          altitude: at.altitude ?? 0,
-          neighborhoodLabel: valuation.neighborhoodLabel,
-          landValue: valuation.landValue,
-          ratePerSqFt: valuation.ratePerSqFt,
-          tourismRevenue: computeTourismRevenue(at.lat, at.lng),
-        },
-      ]);
-      setIsPlacing(false);
+      await commitPlacementAt(at);
     };
     wrapper.addEventListener("click", onClick, true);
     return () => wrapper.removeEventListener("click", onClick, true);
-  }, [overlayReady, soundEnabled, isPlacing, movingNeedleId, visitMode, placements]);
+  }, [overlayReady, isPlacing, movingNeedleId, visitMode, placements, commitPlacementAt]);
+
+  // Mobile placement: commit on pointerup (finger lift). Desktop unchanged.
+  useEffect(() => {
+    const wrapper = mapWrapperRef.current;
+    const mapEl = mapRef.current;
+    if (!wrapper || !mapEl || !overlayReady) return;
+    const isMobile =
+      typeof window !== "undefined" &&
+      (window.matchMedia("(pointer: coarse)").matches || "ontouchstart" in window);
+    if (!isMobile) return;
+
+    const onPointerDown = (e) => {
+      if (!isPlacing || !isPointerOnMapSurface(e)) return;
+      if (isPlacingDragActiveRef.current) {
+        try {
+          wrapper.releasePointerCapture(activePlacementPointerIdRef.current);
+        } catch (_) {}
+        setIsPlacingDragActive(false);
+        isPlacingDragActiveRef.current = false;
+        activePlacementPointerIdRef.current = null;
+        if (DEBUG_MOBILE_PLACE) console.log("[DEBUG_MOBILE_PLACE] cancel (multi-touch)");
+        return;
+      }
+      setIsPlacingDragActive(true);
+      isPlacingDragActiveRef.current = true;
+      activePlacementPointerIdRef.current = e.pointerId;
+      try {
+        e.currentTarget.setPointerCapture(e.pointerId);
+      } catch (_) {}
+      e.preventDefault();
+      let pos = wrapperPixelToLatLngWithProjection(mapEl, e.clientX, e.clientY, projectionOverlayRef);
+      if (!pos) {
+        const rect = wrapper.getBoundingClientRect();
+        pos = pixelToApproxLatLng(mapEl, rect, e.clientX, e.clientY);
+      }
+      lastPreviewLatLngRef.current = pos ?? lastPreviewLatLngRef.current;
+      if (DEBUG_MOBILE_PLACE) console.log("[DEBUG_MOBILE_PLACE] start", e.pointerId);
+    };
+
+    const onPointerUp = (e) => {
+      if (!isPlacingDragActiveRef.current || e.pointerId !== activePlacementPointerIdRef.current) return;
+      const at = lastPreviewLatLngRef.current ?? hoverLatLngRef.current;
+      try {
+        wrapper.releasePointerCapture(e.pointerId);
+      } catch (_) {}
+      setIsPlacingDragActive(false);
+      isPlacingDragActiveRef.current = false;
+      activePlacementPointerIdRef.current = null;
+      if (at) {
+        placementCommittedByPointerRef.current = true;
+        commitPlacementAt(at);
+        if (DEBUG_MOBILE_PLACE) console.log("[DEBUG_MOBILE_PLACE] commit", at.lat, at.lng, "placement mode off");
+      }
+    };
+
+    const onPointerCancel = (e) => {
+      if (!isPlacingDragActiveRef.current || e.pointerId !== activePlacementPointerIdRef.current) return;
+      try {
+        wrapper.releasePointerCapture(e.pointerId);
+      } catch (_) {}
+      setIsPlacingDragActive(false);
+      isPlacingDragActiveRef.current = false;
+      activePlacementPointerIdRef.current = null;
+    };
+
+    wrapper.addEventListener("pointerdown", onPointerDown, { passive: false });
+    wrapper.addEventListener("pointerup", onPointerUp, { passive: true });
+    wrapper.addEventListener("pointercancel", onPointerCancel, { passive: true });
+    return () => {
+      wrapper.removeEventListener("pointerdown", onPointerDown);
+      wrapper.removeEventListener("pointerup", onPointerUp);
+      wrapper.removeEventListener("pointercancel", onPointerCancel);
+    };
+  }, [overlayReady, isPlacing, commitPlacementAt]);
 
   // Sync placements to map: one solid Model3DElement per placement (separate from ghost).
   useEffect(() => {
@@ -2503,56 +2613,72 @@ export default function MapScene() {
 
   const showLoading = !mapLibReady || !mapSteady;
 
-  const unlockAudio = () => {
+  const unlockAudio = useCallback(() => {
     const crunchEl = crunchAudioRef.current;
     if (crunchEl) {
       crunchEl.volume = 0;
-      crunchEl.play().then(() => { crunchEl.pause(); crunchEl.currentTime = 0; }).catch((err) => console.error("audio play failed", err));
+      crunchEl.play().then(() => { crunchEl.pause(); crunchEl.currentTime = 0; }).catch(() => {});
     }
     const glassEl = glassSmashAudioRef.current;
     if (glassEl) {
       glassEl.volume = 0;
-      glassEl.play().then(() => { glassEl.pause(); glassEl.currentTime = 0; }).catch((err) => console.error("audio play failed", err));
+      glassEl.play().then(() => { glassEl.pause(); glassEl.currentTime = 0; }).catch(() => {});
     }
     const wilhelmEl = wilhelmAudioRef.current;
     if (wilhelmEl) {
       wilhelmEl.volume = 0;
-      wilhelmEl.play().then(() => { wilhelmEl.pause(); wilhelmEl.currentTime = 0; }).catch((err) => console.error("audio play failed", err));
+      wilhelmEl.play().then(() => { wilhelmEl.pause(); wilhelmEl.currentTime = 0; }).catch(() => {});
     }
     const moveEl = moveAudioRef.current;
     if (moveEl) {
       moveEl.volume = 0;
-      moveEl.play().then(() => { moveEl.pause(); moveEl.currentTime = 0; }).catch((err) => console.error("audio play failed", err));
+      moveEl.play().then(() => { moveEl.pause(); moveEl.currentTime = 0; }).catch(() => {});
     }
     const visitEl = visitAudioRef.current;
     if (visitEl) {
       visitEl.volume = 0;
-      visitEl.play().then(() => { visitEl.pause(); visitEl.currentTime = 0; }).catch((err) => console.error("audio play failed", err));
+      visitEl.play().then(() => { visitEl.pause(); visitEl.currentTime = 0; }).catch(() => {});
     }
     const poofEl = poofAudioRef.current;
     if (poofEl) {
       poofEl.volume = 0;
-      poofEl.play().then(() => { poofEl.pause(); poofEl.currentTime = 0; }).catch((err) => console.error("audio play failed", err));
+      poofEl.play().then(() => { poofEl.pause(); poofEl.currentTime = 0; }).catch(() => {});
     }
     const placeNeedleEl = placeNeedleAudioRef.current;
     if (placeNeedleEl) {
       placeNeedleEl.volume = 0;
-      placeNeedleEl.play().then(() => { placeNeedleEl.pause(); placeNeedleEl.currentTime = 0; }).catch((err) => console.error("audio play failed", err));
+      placeNeedleEl.play().then(() => { placeNeedleEl.pause(); placeNeedleEl.currentTime = 0; }).catch(() => {});
     }
-  };
+    const shootingEl = shootingSoundRef.current;
+    if (shootingEl) {
+      shootingEl.volume = 0;
+      shootingEl.play().then(() => { shootingEl.pause(); shootingEl.currentTime = 0; }).catch(() => {});
+    }
+  }, []);
 
-  const onEnableSound = () => {
-    unlockAudio();
-    setSoundEnabled(true);
-  };
+  const playShootingSound = useCallback(() => {
+    if (isUnlockingRef?.current) return;
+    if (sfxEnabled && shootingSoundRef.current) {
+      shootingSoundRef.current.volume = 0.4;
+      shootingSoundRef.current.currentTime = 0;
+      shootingSoundRef.current.play().catch(() => {});
+    }
+  }, [sfxEnabled, isUnlockingRef]);
 
-  const onDisableSound = () => {
-    unlockAudio();
-    setSoundEnabled(false);
-  };
+  useEffect(() => {
+    registerUnlockSfxCallback(unlockAudio);
+  }, [registerUnlockSfxCallback, unlockAudio]);
+
+  useEffect(() => {
+    registerPlayShootingSoundCallback?.(playShootingSound);
+  }, [registerPlayShootingSoundCallback, playShootingSound]);
+
+  useEffect(() => {
+    registerOpenCreditsCallback(() => setCreditsOpen(true));
+  }, [registerOpenCreditsCallback]);
 
   const onRemoveNeedle = (id) => {
-    if (soundEnabled && poofAudioRef.current) {
+    if (!isUnlockingRef?.current && sfxEnabled && poofAudioRef.current) {
       poofAudioRef.current.volume = 0.6;
       poofAudioRef.current.currentTime = 0;
       poofAudioRef.current.play().catch((err) => console.error("poof play failed", err));
@@ -2576,7 +2702,7 @@ export default function MapScene() {
   };
 
   const onMoveNeedle = (id) => {
-    if (soundEnabled && moveAudioRef.current) {
+    if (!isUnlockingRef?.current && sfxEnabled && moveAudioRef.current) {
       moveAudioRef.current.volume = 0.5;
       moveAudioRef.current.currentTime = 0;
       moveAudioRef.current.play().catch((err) => console.error("move play failed", err));
@@ -2596,7 +2722,7 @@ export default function MapScene() {
     const mapEl = mapRef.current;
     const visited = isOriginal ? { lat: SEATTLE_CENTER.lat, lng: SEATTLE_CENTER.lng } : placement ? { lat: placement.lat, lng: placement.lng } : null;
     if (!visited || !mapEl) return;
-    if (soundEnabled && visitAudioRef.current) {
+    if (!isUnlockingRef?.current && sfxEnabled && visitAudioRef.current) {
       visitAudioRef.current.volume = 0.5;
       visitAudioRef.current.currentTime = 0;
       visitAudioRef.current.play().catch((err) => console.error("visit play failed", err));
@@ -2643,6 +2769,7 @@ export default function MapScene() {
   };
 
   const onExitVisit = () => {
+    playShootingSound();
     if (viewModeFlyTimeoutRef.current) {
       clearTimeout(viewModeFlyTimeoutRef.current);
       viewModeFlyTimeoutRef.current = null;
@@ -2679,11 +2806,12 @@ export default function MapScene() {
   }, []);
 
   const dismissPolaroid = useCallback(() => {
+    playShootingSound();
     polaroidAbortRef.current?.abort();
     polaroidAbortRef.current = null;
     setPolaroid(null);
     setIsDeveloping(false);
-  }, []);
+  }, [playShootingSound]);
 
   useEffect(() => {
     const id = polaroid?.id;
@@ -2699,12 +2827,12 @@ export default function MapScene() {
     const t5 = window.setTimeout(() => setBatteryWarning(true), 5000);
     const t10 = window.setTimeout(() => setBatteryBlackout(true), 10000);
     const t12 = window.setTimeout(() => setBatteryWarning(false), 12000);
-    const t15 = window.setTimeout(() => setAsciiNeedle(true), 15000);
+    const t14 = window.setTimeout(() => setAsciiNeedle(true), 14000);
     return () => {
       window.clearTimeout(t5);
       window.clearTimeout(t10);
       window.clearTimeout(t12);
-      window.clearTimeout(t15);
+      window.clearTimeout(t14);
       setBatteryWarning(false);
       setBatteryBlackout(false);
       setAsciiNeedle(false);
@@ -2712,7 +2840,7 @@ export default function MapScene() {
   }, [polaroid?.id]);
 
   const onTakePhoto = useCallback(async () => {
-    if (soundEnabled && cameraShutterAudioRef.current) {
+    if (!isUnlockingRef?.current && sfxEnabled && cameraShutterAudioRef.current) {
       cameraShutterAudioRef.current.volume = 0.5;
       cameraShutterAudioRef.current.currentTime = 0;
       cameraShutterAudioRef.current.play().catch((err) => console.error("camera shutter play failed", err));
@@ -2846,7 +2974,7 @@ export default function MapScene() {
       setIsDeveloping(false);
     }
   }, [
-    soundEnabled,
+    sfxEnabled,
     visitedNeedleId,
     panelNeedleId,
     placements,
@@ -2854,7 +2982,7 @@ export default function MapScene() {
   ]);
 
   const onClearNeedles = () => {
-    if (soundEnabled && poofAudioRef.current) {
+    if (!isUnlockingRef?.current && sfxEnabled && poofAudioRef.current) {
       poofAudioRef.current.volume = 0.6;
       poofAudioRef.current.currentTime = 0;
       poofAudioRef.current.play().catch((err) => console.error("poof play failed", err));
@@ -2881,6 +3009,15 @@ export default function MapScene() {
     }
   };
 
+  // Mobile: haptic feedback on any button press (pointerdown only; cooldown avoids double-trigger with click)
+  useEffect(() => {
+    const onPointerDown = (e) => {
+      if (e.target.closest?.("#root") && e.target.closest?.("button")) hapticTap("light");
+    };
+    document.addEventListener("pointerdown", onPointerDown, { passive: true });
+    return () => document.removeEventListener("pointerdown", onPointerDown);
+  }, []);
+
   return (
     <div className="exhibit-page">
       <audio ref={crunchAudioRef} src="/audio/crunch.mp3" preload="auto" />
@@ -2896,12 +3033,17 @@ export default function MapScene() {
       <audio ref={visitAudioRef} src="/audio/visit.mp3" preload="auto" />
       <audio ref={cameraShutterAudioRef} src="/audio/camera-shutter.mp3" preload="auto" />
       <audio ref={placeNeedleAudioRef} src="/audio/percussive-hit.mp3" preload="auto" />
+      <audio ref={shootingSoundRef} src="/audio/shooting-sound-fx.mp3" preload="auto" />
       <button
         type="button"
-        className="exhibit-sound-toggle"
-        onClick={soundEnabled ? onDisableSound : onEnableSound}
+        className="exhibit-audio-button"
+        onClick={() => {
+          playShootingSound();
+          openAudioModal();
+        }}
+        aria-label="Open audio settings"
       >
-        {soundEnabled ? "Mute" : "Enable Sound"}
+        Audio
       </button>
       <div className="exhibit-panel">
         <span className="exhibit-registration-top-left" aria-hidden="true" />
@@ -2922,13 +3064,15 @@ export default function MapScene() {
             </a>.
           </p>
           <p className="exhibit-instructions">
-            Click to place Needle. Observe civic impact.
+            {isMobileView && isPlacing
+              ? "Drag and release to place Needle. Observe civic impact."
+              : "Click to place Needle. Observe civic impact."}
           </p>
         </header>
         <div className="exhibit-viewport">
           <div
             ref={mapWrapperRef}
-            className={`exhibit-viewport-inner${isPlacing && pointerOverMap ? " is-placing" : ""}`}
+            className={`exhibit-viewport-inner${isPlacing && pointerOverMap ? " is-placing" : ""}${isPlacingDragActive ? " is-placing-drag" : ""}`}
             onPointerEnter={() => setPointerOverMap(true)}
             onPointerLeave={() => setPointerOverMap(false)}
           >
@@ -2997,6 +3141,16 @@ export default function MapScene() {
                 </>
               );
             })()}
+            {isMobileView && !isPlacing && (
+              <button
+                type="button"
+                className="needle-place-overlay-mobile"
+                onClick={() => setIsPlacing(true)}
+                aria-label="Place Needle"
+              >
+                Place Needle
+              </button>
+            )}
             {(() => {
               const showMenu = hoveredNeedleId != null && !isPlacing && !movingNeedleId && !visitMode;
               const isOriginal = hoveredNeedleId === ORIGINAL_NEEDLE_ID;
@@ -3141,23 +3295,25 @@ export default function MapScene() {
           >
             Erase Needles
           </button>
-          <button
-            type="button"
-            className="exhibit-place-another"
-            disabled={(placements.length < 1 && !isPlacing) || movingNeedleId != null}
-            onClick={() => {
-              if ((placements.length < 1 && !isPlacing) || movingNeedleId != null) return;
-              if (soundEnabled && placeNeedleAudioRef.current) {
-                placeNeedleAudioRef.current.volume = 0.5;
-                placeNeedleAudioRef.current.currentTime = 0;
-                placeNeedleAudioRef.current.play().catch((err) => console.error("place needle sound play failed", err));
-              }
-              setPanelNeedleId(null);
-              setIsPlacing(true);
-            }}
-          >
-            Place Needle
-          </button>
+          {!isMobileView && (
+            <button
+              type="button"
+              className="exhibit-place-another"
+              disabled={(placements.length < 1 && !isPlacing) || movingNeedleId != null}
+              onClick={() => {
+                if ((placements.length < 1 && !isPlacing) || movingNeedleId != null) return;
+                if (!isUnlockingRef?.current && sfxEnabled && placeNeedleAudioRef.current) {
+                  placeNeedleAudioRef.current.volume = 0.5;
+                  placeNeedleAudioRef.current.currentTime = 0;
+                  placeNeedleAudioRef.current.play().catch((err) => console.error("place needle sound play failed", err));
+                }
+                setPanelNeedleId(null);
+                setIsPlacing(true);
+              }}
+            >
+              Place Needle
+            </button>
+          )}
         </div>
         <div className="exhibit-data">
           <div className="exhibit-live-estimate">
@@ -3318,7 +3474,7 @@ export default function MapScene() {
                 {polaroid.status === "developing" && (
                   <div className="exhibit-polaroid-developing">Developing…</div>
                 )}
-                {/* Display-only layers: do not affect download. Timeline: 0–5s photo; 5–10s photo + warning; 10–12s warning over black; 12–15s black only; 15s+ emoticons + production text. */}
+                {/* Display-only layers: do not affect download. Timeline: 0–5s photo; 5–10s photo + warning; 10–12s warning over black; 12–14s black only; 14s+ emoticons + production text. */}
                 {batteryBlackout && (
                   <div className="exhibit-polaroid-blackout" aria-hidden />
                 )}
@@ -3393,7 +3549,10 @@ export default function MapScene() {
                   type="button"
                   className="exhibit-polaroid-download"
                   disabled={!polaroid.dataUrl}
-                  onClick={() => polaroid.dataUrl && downloadPostcardJpg(polaroid)}
+                  onClick={() => {
+                    playShootingSound();
+                    if (polaroid.dataUrl) downloadPostcardJpg(polaroid);
+                  }}
                 >
                   Download photo
                 </button>
@@ -3405,7 +3564,10 @@ export default function MapScene() {
       <button
         type="button"
         className="exhibit-credits-button"
-        onClick={() => setCreditsOpen(true)}
+        onClick={() => {
+          playShootingSound();
+          setCreditsOpen(true);
+        }}
         aria-label="Open credits"
       >
         Credits
@@ -3415,7 +3577,10 @@ export default function MapScene() {
           <div
             className="exhibit-credits-backdrop"
             aria-hidden
-            onClick={() => setCreditsOpen(false)}
+            onClick={() => {
+              playShootingSound();
+              setCreditsOpen(false);
+            }}
           />
           <div className="exhibit-credits-modal" role="dialog" aria-labelledby="credits-title" aria-modal="true">
             <div className="exhibit-credits-modal-inner">
@@ -3424,7 +3589,10 @@ export default function MapScene() {
                 <button
                   type="button"
                   className="exhibit-credits-modal-close"
-                  onClick={() => setCreditsOpen(false)}
+                  onClick={() => {
+                    playShootingSound();
+                    setCreditsOpen(false);
+                  }}
                   aria-label="Close credits"
                 >
                   ×
@@ -3443,6 +3611,17 @@ export default function MapScene() {
                     <img src="/eg_logo.png" alt="" className="exhibit-credits-eg-logo" />
                   </a>
                 </div>
+                <section className="exhibit-credits-section exhibit-credits-music-section">
+                  <h3 className="exhibit-credits-category">Music Credit</h3>
+                  <div className="exhibit-credits-music-block">
+                    <p className="exhibit-credits-music-title">&ldquo;Thrift Shop (8bit cover)&rdquo;</p>
+                    <p className="exhibit-credits-music-by">by Oscar</p>
+                    <p className="exhibit-credits-music-link-wrap">
+                      <a href="https://linktr.ee/vvizardofos" target="_blank" rel="noopener noreferrer" className="exhibit-credits-link">See more of Oscar&apos;s work!</a>
+                    </p>
+                    <p className="exhibit-credits-music-original">Original composition by Macklemore &amp; Ryan Lewis</p>
+                  </div>
+                </section>
                 {[
                   ["3D Model", "3D Model Sources"],
                   ["Sound", "Sound Sources"],
