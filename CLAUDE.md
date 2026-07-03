@@ -140,7 +140,7 @@ canvas.
 
 ## 5. The core model: one `progress` value drives everything
 
-Everything is a function of a single scalar **`progress`** that runs `0 → 1.8`
+Everything is a function of a single scalar **`progress`** that runs `0 → 2.5`
 (`MAX_PROGRESS`). The document never scrolls; `useParallaxInput` intercepts
 wheel/touch and converts it to `progress`, and the whole scene is rendered from
 that number every frame. There is no native scroll, so no bounce/overscroll.
@@ -181,27 +181,36 @@ interpolation function used everywhere (render, hit‑testing, glimmers).
 
 ## 7. The staged animation (`useParallaxInput.js` + `COMMIT_RUNS`)
 
-The scroll hook converts input to progress AND runs **self‑playing "commit"
-runs**. `COMMIT_RUNS` is an array of **runs**; each run is an array of segments
-`{start, end, duration}`. When the user scrolls forward across a run's first
-`start`, that run **auto‑advances progress on its own** at each segment's pace,
-then stops at the run's end and waits for the next scroll. So: **3 runs = 3
-scrolls**, each self‑completing.
+**INPUT MODEL (reworked 2026‑07 → SCRUB + AUTOPLAY):** the scene now runs
+`scrub: true` — scrolling drives progress **directly, both directions**, and
+never arms a commit run. The runs only play via the chevron (`playAll()`),
+which autoplays the remaining sequence from wherever the playhead sits, at the
+designed pace, holding `chainPause` ms (currently 2500) at each run boundary so
+parked copy beats get read. A backward gesture cancels autoplay at any time
+(including during a boundary hold); a forward gesture still accelerates a
+non‑`lockPace` run. Durations are reading-pace (see run list below).
+`wheelSpan: 2200`, `touchSpan: 900` — full scrub is now ≈6,000px of wheel
+(progress spans 0→2.75).
 
-Current structure (`MAX_PROGRESS = 1.8`):
+`COMMIT_RUNS` is an array of **runs**; each run is an array of segments
+`{start, end, duration}`. In the retired trigger model, scrolling forward
+across a run's first `start` armed it; with `scrub: true` that path is gated
+off (the `!scrub` check in `advance()`), but the machinery remains.
 
-- **Stage 1 (intro)** `run[0]`: `0.024→0.496` (1.95s, first needle rises,
-  dramatic) · `0.496→0.79` (2.7s, the world rises into a clustered‑low, dimmed
-  composition, front‑first) · `0.79→0.85` (1.3s, the back treeline alone drifts
-  up and locks in — a soft tail).
-- **Stage 2 (second needle)** `run[1]`: `0.86→1.0` (2.6s, `lockPace: true`). The
-  far needle (12) slides out from directly behind needle 6 and lights top‑down,
-  "as if the first split in two." `lockPace` means forward scroll can't rush it —
-  stays dramatic.
-- **Stage 3 (finale)** `run[2]`: `1.005→1.25` (3.1s, viewpoint rises — all lower
-  layers shift up in parallax) · `1.25→1.5` (4.2s, layers lock into final
-  positions and **illuminate one‑by‑one back→front**) · `1.5→1.8` (3.0s, the
-  copy swaps to the campaign line, then the logo reveals beneath it).
+Current structure (`MAX_PROGRESS = 2.75`, COPY-RELAY choreography 2026-07 —
+each stage is timed to a crawl block's transit; see the STAGE MAP comment in
+`layers.js`; timings remapped, geometry untouched):
+
+- **Run 1** `0.024→0.496` (6s, needle 6 rises + lights; c1 rides up and out) ·
+  `0.496→0.79` (12s, TREELINES rise in step with c2). Parks at 0.79.
+- **Run 2** `0.795→1.3` (12s, BUILDINGS rise front-first to clustered-low with
+  c3) · `1.3→1.56` (5s, c4 climbs to 3/4 up screen). Parks on the cliffhanger.
+- **Run 3** `1.567→1.71` (8s, `lockPace: true`): needle 12 slides out from
+  behind needle 6 and lights top-down `1.59→1.7`.
+- **Run 4** `1.715→2.1` (12s, viewpoint rises; layers lock + illuminate
+  back→front `1.932→2.1`; TSN exits skyward; glimmers ramp `2.0→2.1`) ·
+  `2.1→2.5` (iconic block + materializing "times two" ride off; the campaign
+  lockup scrolls on and locks — the end state = the interactive deck).
 
 **Key hook behaviors (all in `useParallaxInput.js`):**
 - `maxProgress` option lets progress exceed 1.0 (so stages append without
@@ -389,6 +398,26 @@ donate-land`), each `{ id, title, tagline, body[], list?, faq?, cta?, secondary?
 … }`. The cards render `title` as a **subheading** under the card's `section`
 heading. The old `stamp`/`tabNum` "Exhibit A / № I" chrome was removed from the
 render (fields remain in the data, unused).
+
+**ALL COPY = ONE TEXT CRAWL (2026-07, final form):** every piece of copy —
+the five statements, "An Iconic View... / times two.", "The Campaign / For",
+and the LOGO — rides a single scrolling column (`CRAWL_LINES` + `CRAWL_KF` in
+`ParallaxScene.jsx`) at CONSTANT speed (one linear kf span, 120% frame height
+per 1.0 progress; column top 40 at p=0, −290 at 2.75). Beat alignment comes ONLY from buffer
+space between blocks (`at` offsets, cqh; block at screen row R at progress p
+when `at = R − 40 + 120p`; readable band ≈15–54; c1 has MANDATED line
+breaks via `lines` + a --fit size so "offers unparalleled" holds one row). The crawl renders at z 300
+(behind all moving layers, in front of the sky) so the treeline occludes rising
+lines; a mask dissipates blocks near the frame top and hides them below the
+horizon. ENDING (v3): c6 "AN / ICONIC / VIEW" rides the crawl; c7 "TIMES / TWO"
+materializes beneath it (`fadeIn`), both ride off; then the CAMPAIGN LOCKUP
+("The Campaign For" one line + logo) does NOT ride the crawl — it MATERIALIZES
+in place (`.parallax-lockup`, blur+scale glimmer-in over progress 2.38→2.48)
+at its resting spot (text row 4, right edge on the copy margin, logo beneath)
+just as "times two" rides off and the scroll completes at MAX_PROGRESS 2.5.
+No mask-lift machinery needed anymore — nothing locks inside the crawl. The crawl fades with the chrome when a card opens. The old header /
+logo-reveal / splitLetters coagulation system is RETIRED but kept in the file
+for reuse. Copy is user-approved verbatim — do not reword.
 
 The copy was tightened to match the user's real Squarespace site and de‑AI'd.
 **Source of truth for approved wording is the user's live site** (Home / About /

@@ -38,6 +38,13 @@ export function useParallaxInput(
     // stages can extend the range (e.g. 1.25) so they append WITHOUT rescaling
     // every earlier keyframe — layers simply hold past their last keyframe.
     maxProgress = 1,
+    // scrub: scrolling NEVER arms a commit run — the user scrubs progress
+    // freely in both directions. Runs then only play via playAll() (the
+    // chevron), which autoplays the remaining sequence at the designed pace.
+    scrub = false,
+    // chainPause: ms to hold at each run boundary during playAll, so a copy
+    // beat that lands at a park is readable before the next stage rolls.
+    chainPause = 0,
   } = {}
 ) {
   const clampP = (v) => (v < 0 ? 0 : v > maxProgress ? maxProgress : v);
@@ -56,6 +63,8 @@ export function useParallaxInput(
   const committing = useRef(false); // self-driving a commit run
   const activeRun = useRef(null); // which run (array of segments) is playing
   const chaining = useRef(false); // play straight through every remaining run (arrow click)
+  const chainTimer = useRef(0); // pending chainPause hold between runs
+  const startChainRef = useRef(null); // exposes the internal startChain() to playAll
 
   useEffect(() => { enabledRef.current = enabled; }, [enabled]);
 
@@ -64,11 +73,12 @@ export function useParallaxInput(
     advanceRef.current && advanceRef.current(d, d * 1000);
   }, []);
 
-  // Clicking the scroll arrow plays through EVERY remaining stage without
-  // stopping — chain each run into the next until the end.
+  // Clicking the scroll arrow plays through EVERY remaining stage — chain each
+  // run into the next until the end (with an optional chainPause hold between
+  // runs). Arms the next run DIRECTLY (not via a scroll nudge), so it works in
+  // scrub mode too, from wherever the playhead currently sits.
   const playAll = useCallback(() => {
-    chaining.current = true;
-    advanceRef.current && advanceRef.current(0.06, 60);
+    startChainRef.current && startChainRef.current();
   }, []);
 
   const goTo = useCallback((p) => {
@@ -107,12 +117,20 @@ export function useParallaxInput(
         target.current = Math.min(last.end, target.current + rate * dt);
         if (current.current >= last.end - 0.002) {
           committing.current = false; activeRun.current = null;
-          // play-through (arrow click): immediately arm the next run instead of
-          // waiting for another scroll, until there are none left.
+          // play-through (arrow click): arm the next run instead of waiting
+          // for another scroll, until there are none left. With chainPause,
+          // hold at the boundary first so the just-landed copy beat reads.
           if (chaining.current && runs) {
             const next = runs.find((r) => r[0].start > current.current - 1e-4);
-            if (next) { committing.current = true; activeRun.current = next; }
-            else chaining.current = false;
+            if (!next) chaining.current = false;
+            else if (chainPause > 0) {
+              clearTimeout(chainTimer.current);
+              chainTimer.current = setTimeout(() => {
+                if (!chaining.current) return; // user reversed during the hold
+                committing.current = true; activeRun.current = next;
+                kickRef.current && kickRef.current();
+              }, chainPause);
+            } else { committing.current = true; activeRun.current = next; }
           }
         }
       }
@@ -130,12 +148,28 @@ export function useParallaxInput(
     };
     kickRef.current = kick;
 
+    // playAll: arm the first run that still has ground to cover from the
+    // current position and chain from there (works mid-run and in scrub mode).
+    const startChain = () => {
+      if (!runs) return;
+      const next = runs.find((r) => r[r.length - 1].end > current.current + 1e-3);
+      if (!next) return;
+      chaining.current = true;
+      committing.current = true;
+      activeRun.current = next;
+      kick();
+    };
+    startChainRef.current = startChain;
+
     const report = (raw, consumed, released, atStart, atEnd) => {
 
       if (debug) setDebugState({ delta: Math.round(raw), consumed, released, atStart, atEnd });
     };
 
     const advance = (dProgress, raw) => {
+      // any backward gesture cancels a play-through — including during a
+      // chainPause hold (committing is false then, so the check below misses it)
+      if (dProgress < 0) chaining.current = false;
       // While a run is self-driving: the auto-advance (in tick) is a FLOOR pace.
       // A forward gesture ACCELERATES it — the push is added on top of the floor
       // (capped at the current stage's end), so impatient users can fast-forward
@@ -173,7 +207,8 @@ export function useParallaxInput(
       if (intoScene) {
         const nextTarget = clampP(p + dProgress);
         // arm a self-driving run when scrolling forward across its first start
-        if (runs && fwd) {
+        // (never in scrub mode — there, runs only play via playAll)
+        if (runs && fwd && !scrub) {
           for (const run of runs) {
             const s0 = run[0].start;
             if (p < s0 && nextTarget >= s0) { committing.current = true; activeRun.current = run; break; }
@@ -238,12 +273,14 @@ export function useParallaxInput(
       el.removeEventListener('touchcancel', onTouchEnd);
       if (raf.current) cancelAnimationFrame(raf.current);
       raf.current = 0;
+      clearTimeout(chainTimer.current);
       kickRef.current = null;
       advanceRef.current = null;
+      startChainRef.current = null;
       document.body.style.overflow = prevBodyOverflow;
       document.documentElement.style.overscrollBehavior = prevRootOB;
     };
-  }, [ref, wheelSpan, touchSpan, smoothing, hasContentAbove, hasContentBelow, debug, commit, maxProgress]);
+  }, [ref, wheelSpan, touchSpan, smoothing, hasContentAbove, hasContentBelow, debug, commit, maxProgress, scrub, chainPause]);
 
   return [progress, { goTo, nudge, playAll, debug: debugState }];
 }

@@ -62,6 +62,139 @@ body {
 }
 
 
+/* ── NARRATION CRAWL ──────────────────────────────────────────
+   One continuous copy column tied to progress. Lives INSIDE the frame at
+   z 300 — behind every moving layer (treelines occlude it at the horizon),
+   in front of the sky plates. The mask dissipates lines near the top of the
+   frame and hides them below the horizon band before the treeline has risen.
+   container-type: size → children size/position in cqw/cqh = % of the FRAME,
+   stable on any screen. */
+.parallax-crawl {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  container-type: size;
+  -webkit-mask-image: linear-gradient(to bottom,
+    transparent 2%, #000 9%, #000 54%, transparent 63%);
+  mask-image: linear-gradient(to bottom,
+    transparent 2%, #000 9%, #000 54%, transparent 63%);
+}
+.parallax-crawl-col {
+  position: absolute;
+  left: 0;
+  right: clamp(0.9rem, 3dvh, 2.2rem); /* same inset as the header */
+  /* top is inline — driven by CRAWL_KF each frame */
+}
+.parallax-crawl-line {
+  position: absolute;
+  right: 0;
+  /* RIGHT-SIDE column. 58cqw is the narrowest that still fits the longest
+     single word (UNPARALLELED) at this size — narrower and it overflows past
+     the ragged edge. Upper rows may clip the far needle's disc; the crawl is
+     behind it (z 300), so the disc occludes the text in passing. */
+  max-width: 58cqw;
+  text-align: right;
+  font-family: var(--font-display);
+  font-weight: 300;
+  text-transform: uppercase;
+  color: var(--mustard, #e8b842);
+  font-size: clamp(1.54rem, 5.94cqw, 2.97rem); /* +10% (beat-1 review) */
+  letter-spacing: 0.14em;
+  line-height: 1.45;
+}
+/* the reveal — the HAMMER: one word per row, near the width of the column.
+   8.4cqw is sized so NEEDLES (the widest row) fills the right-side column;
+   tight leading so the three rows read as one monolithic block. */
+.parallax-crawl-line--tsn {
+  font-size: clamp(2.4rem, 8.4cqw, 4.4rem);
+  letter-spacing: 0.3em;
+  line-height: 1.15;
+}
+/* mandated line breaks (c1): each sub-line is one unbreakable row */
+.parallax-crawl-subline {
+  display: block;
+  white-space: nowrap;
+}
+/* c1: SAME size as the other statements; only the tracking is tightened so
+   its widest mandated row ("OFFERS UNPARALLELED") holds one line in the
+   right-side column */
+.parallax-crawl-line--fit {
+  letter-spacing: 0.06em;
+}
+/* "AN / ICONIC / VIEW" + "TIMES / TWO" — the closing tagline, sized up
+   toward the hammer so it doesn't feel small after TWO SPACE NEEDLES */
+.parallax-crawl-line--iconic {
+  font-size: clamp(2rem, 7.4cqw, 3.7rem);
+  letter-spacing: 0.22em;
+  line-height: 1.2;
+}
+
+/* campaign lockup block — scrolls to the TOP of the frame and LOCKS at
+   MAX_PROGRESS (text at row 4, logo ≈ rows 9–36). Inset from the right edge
+   so the lockup sits CENTRALLY in the open top-sky (x ≈ 52–97, right of the
+   needles), well clear of the treeline below. */
+.parallax-crawl-line--campaign {
+  right: 0; /* right-justified with the rest of the scrolling copy */
+}
+/* lockup: "THE CAMPAIGN" spans EXACTLY the logo's width (larger type),
+   "FOR" right-justified on its own line beneath it, logo below */
+.parallax-crawl-campline {
+  display: block;
+  white-space: nowrap;
+  /* plain right-alignment: the right edge sits on the SAME ragged edge as
+     every other copy block (right: 0 in the column), and the text can never
+     overflow past it. Font sized so "THE CAMPAIGN" runs ≈ the logo's width
+     (28.8cqw) — fine-tune this one number to match exactly on screen. */
+  text-align: right;
+  letter-spacing: 0.14em;
+  /* PURE cqw — no rem floor/ceiling. A rem floor bound on smaller windows
+     and made the nowrap line wider than the column, spilling it right past
+     the shared margin (the "too far right" clipping). Frame-proportional
+     only: "THE CAMPAIGN" ≈ 37cqw, always inside the 58cqw column, right
+     edge always on the same ragged edge as the rest of the copy. */
+  font-size: 3.9cqw;
+  line-height: 1.45;
+}
+.parallax-crawl-campline--wide {
+  /* (retired fixed-width/justify experiment — plain right-align now) */
+}
+.parallax-crawl-logo {
+  width: 28.8cqw; /* matches the retired .parallax-logo footprint */
+  aspect-ratio: 272 / 440;
+  margin: 0.2cqh 0 0 auto; /* nudged up tight beneath "FOR", right edges flush */
+  background: var(--mustard, #e8b842);
+  -webkit-mask-size: contain;
+  mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+}
+
+/* ── CAMPAIGN LOCKUP — materializes in place (not part of the crawl).
+   Fixed at the resting spot: text at row 4, logo beneath, right edge on the
+   copy column's margin. Opacity/blur/scale are inline, progress-driven. */
+.parallax-lockup {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  container-type: size; /* cqw/cqh for the campline + logo inside */
+}
+.parallax-lockup-inner {
+  position: absolute;
+  top: 4cqh;
+  right: clamp(0.9rem, 3dvh, 2.2rem); /* same margin as the crawl column */
+  text-align: right;
+  transform-origin: top right;
+  /* the proper copy treatment — same as .parallax-crawl-line (the camplines
+     inherited these from the crawl parent before; the standalone lockup
+     must provide them itself) */
+  font-family: var(--font-display);
+  font-weight: 300;
+  text-transform: uppercase;
+  color: var(--mustard, #e8b842);
+}
+
 /* static atmosphere (sky, stars, searchlights, distant foliage) stays bound to
    the 9:16 frame so it never spills into the window margins */
 .parallax-bg-clip {
@@ -411,8 +544,10 @@ body {
   transition: opacity 0.4s ease;
 }
 
-/* Stars (layer 17) — very subtle independent glimmer. Each group runs its own
-   period/delay (set inline) so neighbouring stars never pulse in unison. */
+/* Stars (layer 17) — independent glimmer. Each group runs its own
+   period/delay (set inline) so neighbouring stars never pulse in unison.
+   Livelier since 2026-07: deeper dips + a non-monotonic flicker stop, so it
+   reads as twinkling rather than a smooth breathe. */
 .parallax-star {
   animation-name: star-twinkle;
   animation-timing-function: ease-in-out;
@@ -421,8 +556,10 @@ body {
 }
 
 @keyframes star-twinkle {
-  from { opacity: 0.15; }
-  to   { opacity: 1; }
+  0%   { opacity: 0.15; }
+  35%  { opacity: 0.85; filter: brightness(1.1); }
+  55%  { opacity: 0.55; }
+  100% { opacity: 1; filter: brightness(1.2); }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -453,9 +590,15 @@ body {
 /* scroll affordance */
 .parallax-hint {
   position: absolute;
-  bottom: clamp(2.5rem, 6vh, 4rem); /* raised — sits where the "Scroll" label used to */
-  left: 50%;
-  transform: translateX(-50%);
+  /* sits just BELOW the opening copy block in the right sky (c1 spans rows
+     ~40–54 at load), not at the bottom of the screen — the cue reads as
+     "this text scrolls". Horizontal centre ≈ the copy column's centre
+     (frame centre + 18% of the frame's width). */
+  top: 65%; /* lowered — clears the (10% larger) opening copy block */
+  /* right-justified to the copy column's right edge (frame right edge minus
+     the column inset), matching the crawl's alignment */
+  right: calc(50% - min(50.625dvh, 100vw) / 2 + clamp(0.9rem, 3dvh, 2.2rem));
+  align-items: flex-end;
   z-index: 1200;
   display: flex;
   flex-direction: column;
@@ -749,11 +892,69 @@ body {
   margin-top: 0.4em;
 }
 
+/* ── Sequential narration (one statement at a time, MIDDLE-RIGHT sky) ─────
+   Each statement replaces the last at reading pace; only bonded pairs
+   ("That is why we propose... / TWO SPACE NEEDLES", "An Iconic View... /
+   times two.") share the sky. Placed mid-sky, near the action — NOT tucked
+   in the top corner. Width is capped so the copy clears both needles —
+   needle 12's disc reaches x ≈ 48% at rest (measured from the art; its
+   bottom edge is ~y 26%, above most of the copy block). */
+.parallax-narration-wrap {
+  position: absolute;
+  top: 5%;
+  left: 50%;
+  width: min(50.625dvh, 100vw); /* the 9:16 frame's width — same as the logo wrap */
+  height: 90%;
+  transform: translateX(-50%);
+  z-index: 1300;
+  pointer-events: none;
+  /* container so the copy sizes in cqw — % of the FRAME's width, not the
+     viewport's. (vw-based sizing overflowed the column on wide screens: the
+     frame is height-driven, so viewport width is the wrong yardstick — the
+     unbreakable "offers unparalleled" stuck out past the right-justified
+     ragged edge.) */
+  container-type: inline-size;
+}
+.parallax-narration {
+  position: absolute;
+  top: 23%; /* mid-sky — below the needle discs' top zone, above the treelines */
+  right: clamp(0.9rem, 3dvh, 2.2rem); /* same inset as the header */
+  max-width: 48%;
+  text-align: right;
+}
+.parallax-narration-line {
+  font-size: clamp(0.72rem, 2.6cqw, 1.35rem);
+  letter-spacing: 0.18em;
+  line-height: 1.55;
+  margin-top: 0.95em;
+}
+.parallax-narration-line:first-child {
+  margin-top: 0;
+}
+/* the reveal — larger than the statements, for punch */
+.parallax-narration-line--tsn {
+  font-size: clamp(0.9rem, 3.3cqw, 1.8rem);
+  letter-spacing: 0.3em;
+  margin-top: 1.15em;
+}
+/* "An Iconic View... / times two." — matched to the crawl statement size
+   (tracking eased from 0.34em so the lines wrap sanely at this scale) */
+.parallax-narration-line--iconic {
+  font-size: clamp(1.4rem, 5.4cqw, 2.7rem);
+  letter-spacing: 0.22em;
+  margin-top: 0.6em;
+}
+
 /* ── Coagulating letters ──────────────────────────────────────
    Flat mustard ink — no gradient, no glow, no sheen — to match the printed
    1962 paper aesthetic. The only treatment is MOTION: each letter "coagulates"
    into place, bleeding in blurred and oversized then sharpening and settling.
    Per-letter stagger comes from inline animation-delay. */
+/* words are atomic — lines wrap only at the spaces BETWEEN words */
+.ico-word {
+  display: inline-block;
+  white-space: nowrap;
+}
 .ico-letter {
   display: inline-block;
   color: var(--mustard, #e8b842);

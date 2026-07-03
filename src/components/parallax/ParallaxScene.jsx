@@ -23,36 +23,83 @@ const MODE = 'slide';
 const clamp01 = (v) => (v < 0 ? 0 : v > 1 ? 1 : v);
 const byId = (id) => INSERTS.find((i) => i.id === id);
 
-// Self-driving "commit" runs. Each run plays out on its own once the user
-// scrolls forward across its first segment's `start`; the next stage waits for
-// the next scroll. THREE stages = three scrolls. (Stable reference so the input
-// effect doesn't re-subscribe.)
-//   STAGE 1 — intro: first needle rises, first copy, the world rises along the bottom.
-//   STAGE 2 — the second needle slides out, second copy ("times two").
-//   STAGE 3 — the lower layers rise further + illuminate back→front, the copy
-//             swaps to the campaign line, and the logo reveals — all in one go.
+// Self-driving "commit" runs (autoplay pacing; scrub users bypass these —
+// runs only play via the chevron).
+// ── ONE GLOBAL RATE ──────────────────────────────────────────────────────
+// The crawl must NEVER speed up, slow down, or pause. Copy position is linear
+// in progress, so progress must advance at ONE constant rate everywhere:
+// every segment's duration is span × SECONDS_PER_PROGRESS via seg(). Do NOT
+// hand-set a duration — that reintroduces visible copy-speed changes. All
+// timing is landed with SPACING (CRAWL_LINES `at`) and layer keyframes only.
+const SECONDS_PER_PROGRESS = 12.8; // was 20 → 15.4 (+30%) → 12.8 (+20% again, 2026-07)
+const seg = (start, end, opts) => ({ start, end, duration: (end - start) * SECONDS_PER_PROGRESS, ...opts });
 const COMMIT_RUNS = [
   [
-    { start: 0.024, end: 0.496, duration: 1.95 }, // needle rise — dramatic
-    { start: 0.496, end: 0.79, duration: 2.7 }, // the world rises — measured; cluster settles
-    { start: 0.79, end: 0.85, duration: 1.3 }, // soft tail — back treeline alone drifts up & locks in
+    seg(0.024, 0.496), // needle rises + lights; c1 rides up and out
+    seg(0.496, 0.95), // treelines rise through c2's transit + c3's emergence, settling as c3 climbs
   ],
   [
-    // second needle — slow, majestic slide. lockPace: forward scroll can't
-    // rush it, so the reveal stays dramatic even when the user scrolls fast.
-    { start: 0.86, end: 1.0, duration: 2.6, lockPace: true },
+    seg(0.955, 1.3), // buildings continue front-first with c3
+    seg(1.3, 1.42), // c4 rides high; TSN crests the horizon
+    // NO PARK HERE — c4 scrolling off, TSN scrolling on, and the second
+    // needle revealing itself are ONE continuous moment [1.42–1.56]
+    seg(1.42, 1.56), // the split fires during the copy handoff
   ],
   [
-    { start: 1.005, end: 1.25, duration: 3.1 }, // viewpoint rises: landscape lifts in parallax
-    { start: 1.25, end: 1.5, duration: 4.2 }, // layers lock into final positions + illuminate back→front
-    { start: 1.5, end: 1.8, duration: 3.0 }, // AFTER lock: campaign copy lands, then the logo reveals beneath it
+    seg(1.565, 2.1), // park lands on the completed split; then viewpoint rises, layers lock + illuminate
+    seg(2.1, 2.5), // iconic + times two ride off; the campaign lockup MATERIALIZES as the scroll completes — the end
   ],
 ];
-const MAX_PROGRESS = 1.8;
+const MAX_PROGRESS = 2.5;
+
+// ── NARRATION CRAWL ────────────────────────────────────────────────────────
+// ALL copy rides ONE column at CONSTANT speed (CRAWL_KF is a single linear
+// span — the crawl NEVER slows or speeds up to meet the animation; beat
+// alignment comes purely from the BUFFER SPACE between word blocks). The
+// column rises from behind the treeline (z 300: behind every moving layer,
+// in front of the sky plates), each block dissipates in the mask band near
+// the frame top. The campaign lockup does NOT ride the crawl: it
+// MATERIALIZES at its resting position (blur+scale glimmer-in, 2.38→2.48)
+// as "times two" rides off, landing just as the scroll completes at
+// MAX_PROGRESS. The site rests on it — no cycling, no swaps.
+//   `at` = block offset down the column, in cqh (% of frame height).
+//   Speed is 120 (%/progress), column-top 40 at p=0 → a block sits at screen
+//   row R at progress p when `at = R − 40 + 120p`. Readable band ≈ rows 15–54.
+//   RELAY SPACING (2026-07): each block enters (row ≈63) as the previous
+//   exits the top, and the layer stages are timed to each block's transit —
+//   see the STAGE MAP in layers.js.
+const CRAWL_LINES = [
+  { key: 'c1', lines: ['The Space Needle', 'offers unparalleled', 'views of the', 'Seattle Skyline', '...'], fit: true, at: 0 }, // rows 40–54 at p=0; exits ≈0.33 as c2 enters
+  { key: 'c2', text: 'But with one glaring design flaw', dots: true, at: 62 },   // enters ≈0.33 (needle placed); transits with the TREELINES [0.35–0.78]
+  { key: 'c3', text: 'From the top of the Space Needle, you can’t see the Space Needle itself.', at: 109 }, // emerges ≈0.72 (c2 high in the sky) behind the still-moving treeline; centre ≈1.02
+  { key: 'c4', lines: ['That is why', 'we propose', '...'], at: 145 },      // EARLIER: enters ≈1.02, fully off the top ≈1.5 — the sky is empty before the split at 1.567, so the second needle's arrival owns its moment
+  { key: 'c5', lines: ['TWO', 'SPACE', 'NEEDLES'], at: 168, tsn: true }, // crests ≈1.21, into the readable band ≈1.28 — riding well below c4, prominent before and through the split [1.42–1.56]
+  // ENDING (2026-07, v2 — no face switching):
+  //   c6 "AN / ICONIC / VIEW / ..." rides the crawl like any statement.
+  //   c7 "TIMES / TWO" sits beneath it but MATERIALIZES in place (fadeIn
+  //      window) mid-sky, then both ride up and off together.
+  //   The campaign lockup NO LONGER rides the crawl — it MATERIALIZES in
+  //      place (see the parallax-lockup element) as "times two" scrolls off.
+  { key: 'c6', lines: ['An', 'Iconic', 'View'], at: 220, iconic: true }, // MUCH earlier: enters ≈1.64, mid-split, chasing TSN up the sky
+  // c7 sits DIRECTLY beneath c6 (at 235 = c6's offset + its 3-row height) so
+  // the pair reads as ONE statement, in THREE distinct phases: c6 fully
+  // assembled and ALONE 1.84→1.92 · "TIMES TWO" materializes 1.92→2.0 ·
+  // the completed "AN ICONIC VIEW TIMES TWO" holds intact until ≈2.09 (over
+  // the illumination), then rides off together — c7 clears the frame ≈2.38,
+  // as the campaign lockup materializes in its place.
+  { key: 'c7', lines: ['times', 'two'], at: 235, iconic: true, fadeIn: [1.92, 2.0] },
+];
+// Column-top keyframes (% of frame height) — ONE linear span = constant
+// crawl speed (120% of frame height per 1.0 progress). kfPos clamps at the
+// ends, so the finale block freezes in place at MAX_PROGRESS.
+const CRAWL_KF = [
+  [0, 40],
+  [2.5, -260],
+];
 
 // Progress values where the experience RESTS waiting for a scroll to start the
 // next stage. The "Scroll" cue shows whenever the playhead is parked near one.
-const HINT_POINTS = [0, 0.85, 1.0];
+const HINT_POINTS = [0, 0.95, 1.56];
 
 // Logo lockup (black-on-transparent) used as a gold MASK so it matches the
 // mustard ink exactly. No-stars version — the sky already has the starfield.
@@ -222,16 +269,28 @@ const kfPos = (kf, progress, linear) => {
 // letter blurs + scales in on a stagger and settles, as though the spotlights
 // are catching the words and pulling them together. Flat mustard ink — the only
 // treatment is the motion.
-const splitLetters = (text, prefix) =>
-  Array.from(text).map((ch, i) => (
-    <span
-      key={prefix + i}
-      className="ico-letter"
-      style={{ animationDelay: `${(i * 0.045).toFixed(3)}s` }}
-    >
-      {ch === ' ' ? ' ' : ch}
-    </span>
-  ));
+// `step` = per-letter stagger; long narration sentences pass a smaller step so
+// a whole line finishes coagulating in ~1.8s regardless of length.
+// Letters are grouped into unbreakable WORD spans (.ico-word) so multi-line
+// copy only ever wraps at spaces — never mid-word.
+const splitLetters = (text, prefix, step = 0.045) => {
+  let li = 0; // running letter index — continuous stagger across the line
+  return text.split(' ').flatMap((word, w) => [
+    <span key={`${prefix}w${w}`} className="ico-word">
+      {Array.from(word).map((ch, j) => (
+        <span
+          key={`${prefix}${w}-${j}`}
+          className="ico-letter"
+          style={{ animationDelay: `${(li++ * step).toFixed(3)}s` }}
+        >
+          {ch}
+        </span>
+      ))}
+    </span>,
+    ' ', // real space between words = the only wrap opportunity
+  ]);
+};
+
 
 /**
  * Scrollytelling chapters. As progress passes each chapter's `at`, its layer
@@ -285,8 +344,14 @@ export default function ParallaxScene({ motionGain = 1 }) {
     hasContentAbove: false,
     hasContentBelow: false,
     enabled: activeCard === null && !deckReady,
-    wheelSpan: 3400, // scroll length for the trigger / any post-intro scrolling
-    touchSpan: 1300,
+    // SCRUB MODE: scroll drives progress directly, both directions — the user
+    // reads/plays at their own pace. The chevron (playAll) autoplays the whole
+    // sequence at the designed pace, holding chainPause ms at each stage
+    // boundary so parked copy beats get read.
+    scrub: true,
+    chainPause: 0, // NO pause between chained runs — the crawl must never halt mid-air
+    wheelSpan: 2200, // px of wheel per 1.0 progress — full scrub ≈ 4000px of scroll
+    touchSpan: 900,
     commit: COMMIT_RUNS,
     maxProgress: MAX_PROGRESS,
     debug: DEBUG,
@@ -342,7 +407,7 @@ export default function ParallaxScene({ motionGain = 1 }) {
       excl: GLIMMER_EXCLUDE.has(l.id) || !!l.decor,
     })), []);
   // glints ramp in as the scene finishes illuminating, then persist
-  const glimmerIntensity = activeCard || (openLayer && cardRaised) ? 0 : clamp01((progress - 1.4) / 0.1);
+  const glimmerIntensity = activeCard || (openLayer && cardRaised) ? 0 : clamp01((progress - 2.0) / 0.1);
   // copy + logo fade out as a card raises, and fade back in as it closes (kept
   // mounted so they blend rather than pop). Transitions only at the deck.
   const chromeOpacity = openLayer && cardRaised ? 0 : 1;
@@ -480,92 +545,11 @@ export default function ParallaxScene({ motionGain = 1 }) {
         </div>
       )}
 
-      {/* header — "An Iconic View" lights up once the needle is ~75% risen
-          (≈0.24); "times two" joins as the 2nd needle reveals (run 2). In the
-          finale (stage 4) the first copy dissolves out and is replaced by
-          "The Campaign for Two Space Needles", materializing in its place. */}
-      {!activeCard && (() => {
-        const hin = smoothstep(clamp01((progress - 0.24) / 0.1));
-        if (hin <= 0.001) return null;
-        const t2 = smoothstep(clamp01((progress - 0.9) / 0.08)); // with the 2nd needle
-        const out = smoothstep(clamp01((progress - 1.27) / 0.1)); // first copy fades out early, leaving the eye to follow the rising pieces
-        const camp = smoothstep(clamp01((progress - 1.53) / 0.1)); // campaign copy lands AFTER the layers lock into place
-        const firstOp = 1 - out;
-        return (
-          <header className="parallax-header" style={{ opacity: chromeOpacity, transition: chromeTransition }}>
-            <span className="parallax-header-stack">
-              {/* opacity + slight blur are driven by progress, so the copy
-                  dissolves gradually on scroll-up (and through the swap) */}
-              {firstOp > 0.001 && (
-                <>
-                  <span
-                    className="parallax-header-line"
-                    aria-label="An Iconic View"
-                    style={{ opacity: hin * firstOp, filter: `blur(${((1 - hin) * 5 + out * 5).toFixed(2)}px)` }}
-                  >
-                    {splitLetters('An Iconic View', 'iv-')}
-                  </span>
-                  {t2 > 0.001 && (
-                    <span
-                      className="parallax-header-line parallax-header-line--two"
-                      aria-label="times two"
-                      style={{ opacity: t2 * firstOp, filter: `blur(${((1 - t2) * 5 + out * 5).toFixed(2)}px)` }}
-                    >
-                      {splitLetters('times two', 'tt-')}
-                    </span>
-                  )}
-                </>
-              )}
-              {camp > 0.001 && (
-                <>
-                  {/* "The Campaign / For" right-justified; the logo below
-                      completes it as "…Two Space Needles" */}
-                  <span className="parallax-header-line" aria-label="The Campaign"
-                    style={{ opacity: camp, filter: `blur(${((1 - camp) * 5).toFixed(2)}px)` }}>
-                    {splitLetters('The Campaign', 'c1-')}
-                  </span>
-                  <span className="parallax-header-line" aria-label="For"
-                    style={{ opacity: camp, filter: `blur(${((1 - camp) * 5).toFixed(2)}px)` }}>
-                    {splitLetters('For', 'c2-')}
-                  </span>
-                </>
-              )}
-            </span>
-          </header>
-        );
-      })()}
-
-      {/* logo lockup — HELD OFF until the final beat (stage 5): after the
-          campaign copy is up, the logo materializes and drifts subtly UP into
-          its resting spot just below the copy, completing the statement
-          ("The Campaign For …Two Space Needles"). Gold via mask; opacity + blur
-          driven by progress so it dissolves cleanly when scrolled back. */}
-      {!activeCard && (() => {
-        const rev = smoothstep(clamp01((progress - 1.66) / 0.1)); // reveal — AFTER the campaign copy lands
-        if (rev <= 0.001) return null;
-        const drift = smoothstep(clamp01((progress - 1.65) / 0.13)); // settle upward
-        const top = (18 - 10 * drift).toFixed(2); // 18% → 8% (slightly higher final, just under the copy)
-        return (
-          // while a card is open the logo sits BELOW the card's depth (so the card
-          // rolls up in front of it, never showing on top) AND fades out.
-          <div className="parallax-logo-wrap" aria-hidden="true" style={{ zIndex: openLayer ? 850 : undefined }}>
-            <div
-              className="parallax-logo"
-              role="img"
-              aria-label="Two Space Needles"
-              style={{
-                top: `${top}%`,
-                opacity: rev * chromeOpacity,
-                filter: `blur(${((1 - rev) * 8).toFixed(2)}px)`,
-                transform: `scale(${(0.94 + 0.06 * rev).toFixed(3)})`,
-                transition: chromeTransition,
-                WebkitMaskImage: `url(${LOGO_SRC})`,
-                maskImage: `url(${LOGO_SRC})`,
-              }}
-            />
-          </div>
-        );
-      })()}
+      {/* header + logo lockup RETIRED (2026-07): every piece of copy — the
+          statements, "An Iconic View... / times two.", "The Campaign / For",
+          and the logo — now rides the narration crawl (see CRAWL_LINES).
+          splitLetters + the .ico-* / .parallax-narration-* / .parallax-header
+          / .parallax-logo styles are kept for reference/reuse elsewhere. */}
 
       <div className={`parallax-frame${deckOn ? ' deck-on' : ''}${openLayer ? ' card-mode' : ''}`} ref={frameRef}>
           {/* ── Shared background plates + spotlights (13–18) ────
@@ -645,6 +629,71 @@ export default function ParallaxScene({ motionGain = 1 }) {
             );
           })}
           </div>
+
+          {/* ── NARRATION CRAWL ─────────────────────────────────
+              THE copy column: every block rides it at constant speed (kfPos,
+              linear), climbing out from behind the treeline (z 300: behind
+              every moving layer, in front of the sky) and dissipating in the
+              mask band near the top. The campaign lockup is NOT part of it —
+              it materializes separately (below). Fades with the chrome when
+              a card opens. */}
+          <div
+            className="parallax-crawl"
+            style={{
+              zIndex: 300,
+              opacity: chromeOpacity,
+              transition: chromeTransition,
+            }}
+          >
+            <div
+              className="parallax-crawl-col"
+              style={{ top: `${kfPos(CRAWL_KF, progress, true).toFixed(3)}%` }}
+            >
+              {CRAWL_LINES.map((l) => (                <span
+                  key={l.key}
+                  className={`parallax-crawl-line${l.tsn ? ' parallax-crawl-line--tsn' : ''}${l.iconic ? ' parallax-crawl-line--iconic' : ''}${l.fit ? ' parallax-crawl-line--fit' : ''}`}
+                  style={(() => {
+                    // `fadeIn` = the block MATERIALIZES in place mid-sky
+                    // (opacity + blur window) instead of emerging at the horizon
+                    const t = l.fadeIn ? smoothstep(clamp01((progress - l.fadeIn[0]) / (l.fadeIn[1] - l.fadeIn[0]))) : 1;
+                    return { top: `${l.at}cqh`, opacity: t, filter: t < 1 ? `blur(${((1 - t) * 6).toFixed(2)}px)` : undefined };
+                  })()}
+                >
+                  {/* `lines` = mandated line breaks (each sub-line unbreakable);
+                      `dots` = the trailing ellipsis gets its own row */}
+                  {l.lines ? l.lines.map((ln, i) => <span key={i} className="parallax-crawl-subline">{ln}</span>) : l.text}
+                  {l.dots && <span className="parallax-crawl-subline">...</span>}
+                </span>
+              ))}
+            </div>
+          </div>
+
+          {/* ── CAMPAIGN LOCKUP — the ending. Fixed at its resting spot
+              (text row 4, logo beneath, right edge on the copy column's
+              margin); MATERIALIZES powerfully (blur + scale glimmer-in) at
+              2.38→2.48, just as "times two" rides off and the scroll
+              completes. Progress-driven, so it dissolves on scroll-back. */}
+          {(() => {
+            const t = smoothstep(clamp01((progress - 2.38) / 0.1));
+            if (t <= 0.001) return null;
+            return (
+              <div className="parallax-lockup" style={{ zIndex: 300, opacity: t * chromeOpacity, transition: chromeTransition }}>
+                <div
+                  className="parallax-lockup-inner"
+                  style={{ filter: `blur(${((1 - t) * 8).toFixed(2)}px)`, transform: `scale(${(0.94 + 0.06 * t).toFixed(3)})` }}
+                >
+                  <span className="parallax-crawl-campline">The Campaign</span>
+                  <span className="parallax-crawl-campline">For</span>
+                  <div
+                    className="parallax-crawl-logo"
+                    role="img"
+                    aria-label="Two Space Needles"
+                    style={{ WebkitMaskImage: `url(${LOGO_SRC})`, maskImage: `url(${LOGO_SRC})` }}
+                  />
+                </div>
+              </div>
+            );
+          })()}
 
           {/* ── Whole-comp preview fallback (until real layers exist) ── */}
           {usePreview && (
