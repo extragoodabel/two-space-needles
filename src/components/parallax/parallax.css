@@ -1,0 +1,772 @@
+/* ─────────────────────────────────────────────────────────────
+   PARALLAX FAIRGROUNDS — depth-stack scene
+   A printed Century 21 diorama that descends from overlook (A) to
+   street level (B) on scroll. Portrait-composed; centered as a
+   lit column on wide screens, full-bleed on portrait screens.
+   ───────────────────────────────────────────────────────────── */
+
+/* kill root-level elastic / rubber-band scrolling (esp. macOS Safari) */
+html,
+body {
+  overscroll-behavior: none;
+}
+
+/* the pinned full-viewport stage. It owns its own scroll: input is intercepted
+   by useParallaxInput and converted to progress, so the document never moves. */
+.parallax-stage {
+  position: fixed;
+  inset: 0;
+  height: 100vh;
+  height: 100dvh;
+  width: 100vw;
+  overflow: hidden;
+  overscroll-behavior: none;
+  touch-action: none; /* we drive progress from a deliberate vertical drag */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background:
+    radial-gradient(ellipse 80% 60% at 50% 38%, var(--midnight-soft) 0%, var(--midnight-deep) 78%),
+    var(--midnight-deep);
+}
+
+/* dev-only diagnostic readout */
+.parallax-debug {
+  position: fixed;
+  top: 10px;
+  left: 10px;
+  z-index: 2000;
+  padding: 8px 10px;
+  font-family: var(--font-mono, monospace);
+  font-size: 11px;
+  line-height: 1.5;
+  white-space: pre;
+  color: var(--mustard, #e8b842);
+  background: rgba(11, 20, 40, 0.8);
+  border: 1px solid rgba(232, 184, 66, 0.4);
+  border-radius: 4px;
+  pointer-events: none;
+}
+
+/* portrait composition column — height-driven 9:16.
+   wide screens → narrower than viewport, centered with lit bleed.
+   portrait screens → wider than viewport, sides clipped by the stage. */
+.parallax-frame {
+  position: relative;
+  height: 90%; /* composition sits at 90% with a clear margin all around */
+  aspect-ratio: 9 / 16;
+  margin-inline: auto;
+  /* the frame is a true window: nothing is visible outside it (layers rising
+     from below are clipped at the bottom edge). */
+  overflow: hidden;
+}
+
+
+/* static atmosphere (sky, stars, searchlights, distant foliage) stays bound to
+   the 9:16 frame so it never spills into the window margins */
+.parallax-bg-clip {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+}
+
+/* DECK MENU: once the scene is assembled, hovering/pulling a layer eases it up
+   while others compress. Transition only while the deck is live, so the scroll
+   animation stays frame-accurate everywhere else. */
+.parallax-frame.deck-on .parallax-layer img,
+.parallax-frame.deck-on .parallax-layer .elevator-clip {
+  transition: transform 0.3s cubic-bezier(0.2, 0.7, 0.2, 1); /* snappy hover lift */
+}
+/* card open/close: layers slide slowly, in step with the card's glide. On the
+   return they land with a subtle overshoot bounce; the per-layer delay (set
+   inline) makes them ripple in front → back. */
+.parallax-frame.card-mode .parallax-layer img,
+.parallax-frame.card-mode .parallax-layer .elevator-clip {
+  transition: transform 0.8s cubic-bezier(0.34, 1.3, 0.6, 1);
+}
+
+/* full-card that rises when a menu layer is opened. Mounts aligned to the
+   landmark, then glides up to fill the frame (front layers slide down ahead of
+   it, everything behind is covered). */
+.parallax-card {
+  position: absolute;
+  inset: 0;
+  will-change: transform, opacity;
+  transition: transform 0.85s cubic-bezier(0.16, 0.84, 0.3, 1), opacity 0.6s ease;
+}
+.parallax-card > img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  -webkit-user-drag: none;
+  user-select: none;
+}
+
+/* copy field on the card body (below the illustration) — scrolls on its own */
+.parallax-card-content {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: clamp(1.25rem, 5vw, 3rem);
+  padding-bottom: 4.5rem;
+  color: var(--cream);
+  transition: opacity 0.4s ease;
+}
+/* the intuitive section label (nav-style), once at the top of the card */
+.card-section-heading {
+  max-width: 40rem;
+  margin: 0 auto clamp(1.4rem, 4vw, 2.2rem);
+  font-family: var(--font-display);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-size: clamp(1.9rem, 6.5vw, 3rem);
+  line-height: 1;
+  color: var(--cream);
+}
+.card-section {
+  max-width: 40rem;
+  margin: 0 auto clamp(2rem, 6vw, 3.5rem);
+}
+.card-section-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font-family: var(--font-display);
+  text-transform: uppercase;
+  letter-spacing: 0.24em;
+  font-size: 0.68rem;
+  color: var(--mustard);
+  opacity: 0.85;
+}
+.card-section-title {
+  font-family: var(--font-display);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: clamp(1.05rem, 3.2vw, 1.4rem);
+  color: var(--mustard);
+  margin: 0;
+}
+.card-section-tagline {
+  font-family: var(--font-serif, Georgia, serif);
+  font-style: italic;
+  font-size: clamp(0.95rem, 2.4vw, 1.1rem);
+  color: rgba(244, 238, 224, 0.75);
+  margin: 0.3rem 0 0;
+}
+.card-section-rule {
+  height: 2px;
+  width: 3rem;
+  background: var(--mustard);
+  margin: 1.1rem 0;
+}
+.card-section-body {
+  font-family: var(--font-body, 'Work Sans', system-ui, sans-serif);
+  font-size: clamp(0.95rem, 2.3vw, 1.05rem);
+  line-height: 1.65;
+  margin: 0 0 1rem;
+  color: rgba(244, 238, 224, 0.9);
+}
+.card-section-list {
+  list-style: none;
+  padding: 0;
+  margin: 0.5rem 0 0;
+}
+.card-section-list li {
+  display: flex;
+  gap: 0.9rem;
+  align-items: baseline;
+  margin: 0 0 0.9rem;
+  font-size: clamp(0.95rem, 2.3vw, 1.05rem);
+  line-height: 1.55;
+  color: rgba(244, 238, 224, 0.9);
+}
+.card-section-listnum {
+  font-family: var(--font-display);
+  color: var(--mustard);
+  min-width: 2ch;
+}
+.card-section-faq dt {
+  font-weight: 600;
+  color: var(--cream);
+  margin: 1.1rem 0 0.35rem;
+  font-size: clamp(0.95rem, 2.3vw, 1.05rem);
+}
+.card-section-faq dd {
+  margin: 0;
+  font-size: clamp(0.92rem, 2.2vw, 1rem);
+  line-height: 1.6;
+  color: rgba(244, 238, 224, 0.82);
+}
+.card-section-cta {
+  display: inline-block;
+  margin: 1.4rem 0 0;
+  padding: 0.7rem 1.5rem;
+  background: var(--mustard);
+  color: var(--midnight, #0b1428);
+  font-family: var(--font-display);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-decoration: none;
+  border-radius: 2px;
+  transition: background 0.15s ease, transform 0.1s ease;
+}
+.card-section-cta:hover { background: var(--vermilion, #e0472c); color: var(--cream); }
+.card-section-cta:active { transform: scale(0.98); }
+.card-section-secondary {
+  margin: 1.2rem 0 0;
+  font-size: 0.74rem;
+  letter-spacing: 0.04em;
+  color: rgba(244, 238, 224, 0.5);
+  font-style: italic;
+}
+
+/* close (✕) — the deliberate way out of a card */
+.parallax-card-close {
+  position: absolute;
+  bottom: clamp(0.75rem, 3vw, 1.5rem);
+  right: clamp(0.75rem, 3vw, 1.5rem);
+  z-index: 2;
+  width: 2.4rem;
+  height: 2.4rem;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  border: 1.5px solid var(--mustard);
+  background: rgba(11, 20, 40, 0.55);
+  color: var(--mustard);
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.parallax-card-close:hover { background: var(--mustard); color: var(--midnight, #0b1428); }
+
+/* sparkle overlay — sits above the moving layers, below the atmospheric film */
+.parallax-glimmers {
+  position: absolute;
+  inset: 0;
+  z-index: 1050;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+/* Elevator car riding the needle spine. The container animates a straight
+   vertical travel (relative to the needle, which the <img> itself is locked to)
+   and fades to invisible at the very top so the car reads as entering the disc.
+   Composes with the image's own needle-tracking transform. */
+/* Elevator: a wrapper (tracks the needle) clipped by a HARD line at the disc/
+   spine junction — the car is only visible below the line, giving a crisp
+   entry/exit into the disc. The car image travels the spine inside it. */
+.elevator-clip {
+  position: absolute;
+  inset: 0;
+  /* two HARD hidden bands (car disappears): the disc at the top, and the
+     support-arm section mid-height. Visible on the upper + lower trunk between. */
+  --disc: 23.1%;    /* top: spine/disc junction */
+  --mid-top: 36.5%;   /* support arms — enter */
+  --mid-bot: 52%;   /* support arms — exit */
+  -webkit-mask-image: linear-gradient(to bottom,
+    rgba(0,0,0,0) 0, rgba(0,0,0,0) var(--disc),
+    #000 var(--disc), #000 var(--mid-top),
+    rgba(0,0,0,0) var(--mid-top), rgba(0,0,0,0) var(--mid-bot),
+    #000 var(--mid-bot), #000 100%);
+  mask-image: linear-gradient(to bottom,
+    rgba(0,0,0,0) 0, rgba(0,0,0,0) var(--disc),
+    #000 var(--disc), #000 var(--mid-top),
+    rgba(0,0,0,0) var(--mid-top), rgba(0,0,0,0) var(--mid-bot),
+    #000 var(--mid-bot), #000 100%);
+  -webkit-mask-size: 100% 100%;
+  mask-size: 100% 100%;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+}
+.elevator-front {
+  /* constant-speed travel: ~9s up · ~9s paused in the disc · ~9s down · ~9s
+     paused at the bottom (36s cycle), linear so there are no mid-trip stops.
+     scaleX(-1) mirrors the car in place (origin at the car's x). */
+  transform-origin: 22% 50%;
+  animation: elevator-travel 36s linear infinite;
+}
+@keyframes elevator-travel {
+  0%   { transform: translateY(55%) scaleX(-1); }  /* bottom (start) */
+  25%  { transform: translateY(0)   scaleX(-1); }  /* top — clipped up into the disc */
+  50%  { transform: translateY(0)   scaleX(-1); }  /* paused in the disc */
+  75%  { transform: translateY(55%) scaleX(-1); }  /* bottom */
+  100% { transform: translateY(55%) scaleX(-1); }  /* paused at the bottom */
+}
+@media (prefers-reduced-motion: reduce) {
+  .elevator-front { animation: none; transform: translateY(30%) scaleX(-1); }
+}
+
+/* BACK needle elevator — same masked-travel idea, band positions remapped for
+   the smaller/repositioned back needle; NOT flipped; +1s extra pause at the top
+   so it runs out of sync with the front. */
+.elevator-clip--back {
+  --disc: 42%;
+  --mid-top: 55%;
+  --mid-bot: 70%;
+}
+.elevator-back {
+  animation: elevator-travel-back 37s linear infinite;
+}
+@keyframes elevator-travel-back {
+  0%    { transform: translateY(20%); }  /* bottom (start) */
+  24.3% { transform: translateY(-35%); } /* top — tucked into the disc (~9s up) */
+  51.4% { transform: translateY(-35%); } /* paused in the disc (~10s: 9 + 1 extra) */
+  75.7% { transform: translateY(20%); }  /* bottom (~9s down) */
+  100%  { transform: translateY(20%); }  /* paused at the bottom (~9s) */
+}
+@media (prefers-reduced-motion: reduce) {
+  .elevator-back { animation: none; transform: translateY(0); }
+}
+
+/* idle attract wave — each layer's container bounces up and settles (the
+   per-layer animation-delay, set inline, staggers it front → back). Runs on the
+   container so it composes with the image's own positioning transform. */
+.parallax-layer.rippling {
+  animation: layer-ripple 0.7s ease-out;
+}
+@keyframes layer-ripple {
+  0%   { transform: translateY(0); }
+  30%  { transform: translateY(-3%); }
+  55%  { transform: translateY(0.8%); }
+  78%  { transform: translateY(-0.3%); }
+  100% { transform: translateY(0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .parallax-layer.rippling { animation: none; }
+}
+
+/* every layer fills the frame and is stacked by z-index */
+.parallax-layer {
+  position: absolute;
+  inset: 0;
+  will-change: transform, opacity;
+  transform-origin: 50% 55%; /* scale around the lower-middle, where landmarks root */
+  pointer-events: none;
+}
+
+.parallax-layer img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  will-change: opacity, transform;
+  backface-visibility: hidden;
+  -webkit-user-drag: none;
+  user-select: none;
+}
+
+/* whole-comp preview fallback */
+.parallax-preview img {
+  transition: none;
+}
+
+/* Dim copy of the backmost plate, masked to its bottom, so the bright pink
+   horizon band reads dark while the layers above it are dimmed silhouettes.
+   (Sits in the deep background; the navy sky above is untouched.) */
+.parallax-bg-pinkdim {
+  filter: brightness(0.16) saturate(0.35);
+  -webkit-mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 0) 76%, #000 90%);
+  mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 0) 76%, #000 90%);
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-size: 100% 100%;
+  mask-size: 100% 100%;
+}
+
+/* ── Searchlights (layers 13–16) ──────────────────────────────
+   Soft, semi-transparent beams hinged at their lamp (transform-origin
+   set inline). Each swings ±--spot-amp in an eased pendulum; same speed
+   (animation-duration), desynced by animation-delay set inline. */
+.parallax-spotlight {
+  opacity: 0;
+  /* OFF (reverse): linger, then fade out slowly */
+  transition: opacity 0.85s ease 0.25s;
+  filter: blur(2px);
+  mix-blend-mode: screen;
+  --spot-amp: 45deg;
+  --spot-stretch: 1.9;
+  animation-name: searchlight-swing;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+  animation-direction: alternate;
+}
+.parallax-spotlight.is-on {
+  opacity: 0.44;
+  /* ON (forward): switch on promptly, no delay */
+  transition: opacity 0.4s ease;
+}
+
+/* Stars (layer 17) — very subtle independent glimmer. Each group runs its own
+   period/delay (set inline) so neighbouring stars never pulse in unison. */
+.parallax-star {
+  animation-name: star-twinkle;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+  animation-direction: alternate;
+}
+
+@keyframes star-twinkle {
+  from { opacity: 0.15; }
+  to   { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .parallax-star { animation: none; opacity: 1; }
+}
+
+@keyframes searchlight-swing {
+  from { transform: rotate(calc(-1 * var(--spot-amp))) scale(var(--spot-stretch)); }
+  to   { transform: rotate(var(--spot-amp)) scale(var(--spot-stretch)); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .parallax-spotlight { animation: none; transform: scale(var(--spot-stretch)); }
+}
+
+/* subtle film over the whole stage to bind the print layers together */
+.parallax-stage::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 1100;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 90% 90% at 50% 50%, transparent 60%, rgba(11, 20, 40, 0.35) 100%);
+  mix-blend-mode: multiply;
+}
+
+/* scroll affordance */
+.parallax-hint {
+  position: absolute;
+  bottom: clamp(2.5rem, 6vh, 4rem); /* raised — sits where the "Scroll" label used to */
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1200;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  /* it's a real <button> (click = play the whole sequence) — strip chrome */
+  appearance: none;
+  background: none;
+  border: 0;
+  padding: 0.7rem 1.4rem;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: opacity 0.4s ease;
+}
+.parallax-hint:focus-visible {
+  outline: 1px solid var(--mustard, #e8b842);
+  outline-offset: 4px;
+}
+
+/* a chunky chevron pointing UP — pulses to invite the next scroll */
+.parallax-hint-arrow {
+  width: 16px;
+  height: 16px;
+  border-right: 3px solid var(--mustard, #e8b842);
+  border-bottom: 3px solid var(--mustard, #e8b842);
+  animation: parallax-hint-bob 2.4s ease-in-out infinite;
+}
+
+@keyframes parallax-hint-bob {
+  0%, 100% { transform: rotate(-135deg) translate(0, 0); opacity: 0.55; }
+  50%      { transform: rotate(-135deg) translate(3px, 3px); opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .parallax-hint-arrow { animation: none; transform: rotate(-135deg); }
+}
+
+/* ── Chapter tabs (scrollytelling index) ──────────────────────
+   Printed civic tabs that fade in as each chapter is reached and
+   park as a clickable index. Click expands the layer into a card. */
+.parallax-tab {
+  position: absolute;
+  z-index: 1400;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 0.7rem 0.4rem 0.55rem;
+  background: var(--midnight);
+  color: var(--cream);
+  border: 1.5px solid var(--cream);
+  box-shadow: 0 6px 18px rgba(11, 20, 40, 0.5);
+  font-family: var(--font-display);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-size: 0.74rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.2s ease, background 0.15s ease, color 0.15s ease;
+}
+.parallax-tab:hover { background: var(--vermilion); border-color: var(--mustard); }
+.parallax-tab-num {
+  display: inline-grid;
+  place-items: center;
+  min-width: 1.4em;
+  height: 1.4em;
+  background: var(--mustard);
+  color: var(--midnight);
+  font-size: 0.7rem;
+}
+.parallax-tab-pull { color: var(--mustard); font-size: 0.8rem; }
+
+/* ── Full-length campaign card (reading state) ────────────────── */
+.card-reader {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  background: var(--midnight-deep);
+  animation: card-rise 0.42s cubic-bezier(0.16, 0.84, 0.3, 1) both;
+  transform-origin: 50% 100%;
+}
+.card-reader.is-closing { animation: card-sink 0.34s ease-in both; }
+
+@keyframes card-rise {
+  from { opacity: 0; transform: translateY(48px) scale(0.965); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes card-sink {
+  from { opacity: 1; transform: translateY(0) scale(1); }
+  to   { opacity: 0; transform: translateY(48px) scale(0.965); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .card-reader, .card-reader.is-closing { animation: none; }
+}
+
+.card-reader-scroll {
+  height: 100%;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+.card-reader-sheet {
+  width: min(680px, 100%);
+  margin: 0 auto;
+  background: var(--midnight-deep);
+  min-height: 100%;
+}
+/* illustrated header lifted from the parallax layer */
+.card-reader-art {
+  width: 100%;
+  height: 54vh;
+  background-size: 100% auto;
+  background-repeat: no-repeat;
+  background-position: top center;
+}
+.card-reader-body {
+  position: relative;
+  margin-top: -14vh; /* copy begins over the navy lower field of the card art */
+  padding: 0 clamp(1.5rem, 6vw, 3.5rem) 9rem;
+  color: var(--cream);
+}
+.card-reader-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--mustard);
+  margin-bottom: 0.6rem;
+}
+.card-reader-title {
+  font-family: var(--font-display);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  line-height: 0.98;
+  font-size: clamp(2.4rem, 8vw, 4rem);
+  color: var(--cream);
+}
+.card-reader-tagline {
+  font-family: var(--font-italic);
+  font-style: italic;
+  font-size: clamp(1.1rem, 3.5vw, 1.5rem);
+  color: var(--sky-pale);
+  margin-top: 0.6rem;
+}
+.card-reader-rule {
+  height: 2px;
+  background: var(--vermilion);
+  width: 4rem;
+  margin: 1.6rem 0;
+}
+.card-reader-para {
+  font-size: 1.0625rem;
+  line-height: 1.7;
+  margin-bottom: 1.1rem;
+  max-width: 42rem;
+}
+.card-reader-list { margin: 1.5rem 0; max-width: 42rem; }
+.card-reader-list li {
+  display: flex;
+  gap: 0.9rem;
+  padding: 0.85rem 0;
+  border-top: 1px solid var(--rule-dark);
+  line-height: 1.55;
+}
+.card-reader-list-num {
+  font-family: var(--font-display);
+  color: var(--mustard);
+  font-size: 1.1rem;
+  min-width: 1.6em;
+}
+.card-reader-faq { margin: 1.5rem 0; max-width: 42rem; }
+.card-reader-qa { padding: 1rem 0; border-top: 1px solid var(--rule-dark); }
+.card-reader-qa dt {
+  font-family: var(--font-display);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--mustard);
+  font-size: 0.95rem;
+  margin-bottom: 0.5rem;
+}
+.card-reader-qa dd { line-height: 1.6; }
+.card-reader-cta {
+  display: inline-block;
+  margin: 1.4rem 0 0.5rem;
+  padding: 0.85rem 1.6rem;
+  background: var(--vermilion);
+  color: var(--cream);
+  font-family: var(--font-display);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-weight: 600;
+  border: 1.5px solid var(--mustard);
+}
+.card-reader-secondary {
+  margin-top: 2rem;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--sky-pale);
+  opacity: 0.8;
+}
+.card-reader-return {
+  position: fixed;
+  left: 50%;
+  bottom: clamp(1rem, 4vh, 2rem);
+  transform: translateX(-50%);
+  z-index: 2100;
+  padding: 0.7rem 1.4rem;
+  background: var(--cream);
+  color: var(--midnight);
+  border: 1.5px solid var(--midnight);
+  font-family: var(--font-display);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 6px 20px rgba(11, 20, 40, 0.5);
+}
+.card-reader-return:hover { background: var(--mustard); }
+
+/* ── Logo lockup (stage 3) ────────────────────────────────────
+   Frame-matched column (like the header) so the logo lands over sky on the
+   right and stays above the atmospheric film. The black-on-transparent logo is
+   used as a mask filled with flat mustard, matching the 1962 ink. */
+.parallax-logo-wrap {
+  position: absolute;
+  top: 5%;
+  left: 50%;
+  width: min(50.625dvh, 100vw);
+  height: 90%;
+  transform: translateX(-50%);
+  z-index: 1290;
+  pointer-events: none;
+}
+.parallax-logo {
+  position: absolute;
+  top: 8%; /* fallback; the live value is driven inline so it can drift up */
+  right: clamp(1.7rem, 5dvh, 3.6rem); /* nudged left of the copy's right edge */
+  width: 28.8%;
+  aspect-ratio: 272 / 440;
+  background: var(--mustard, #e8b842);
+  -webkit-mask-size: contain;
+  mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+  transform-origin: center center;
+}
+
+/* ── Opening header ("An Iconic View…") ───────────────────────── */
+/* The copy sits in the OPEN SKY to the right of the needles, right-justified.
+   The header is a column the exact width of the 9:16 frame (50.625dvh ≈
+   90dvh × 9/16), centered like the frame, so its right edge lands on the
+   frame's right edge — over sky, not the dark margins — and it stays above the
+   atmospheric film. Seated beside the needle tops, not centered over them. */
+.parallax-header {
+  position: absolute;
+  top: clamp(0.75rem, 6vh, 3rem);
+  left: 50%;
+  width: min(50.625dvh, 100vw);
+  transform: translateX(-50%);
+  padding-right: clamp(0.9rem, 3dvh, 2.2rem);
+  box-sizing: border-box;
+  z-index: 1300;
+  text-align: right;
+  pointer-events: none;
+}
+/* inline-block group sized to the widest line, pinned to the right edge so both
+   lines right-justify to the same (headline's) right margin */
+.parallax-header-stack {
+  display: inline-block;
+  text-align: right;
+}
+.parallax-header-line {
+  display: block;
+  font-family: var(--font-display);
+  font-weight: 300;
+  text-transform: uppercase;
+  letter-spacing: 0.34em;
+  font-size: clamp(0.713rem, 2.2vw, 1.231rem);
+}
+/* "times two" — same font treatment, right-justified beneath the headline */
+.parallax-header-line--two {
+  text-align: right;
+  margin-top: 0.4em;
+}
+
+/* ── Coagulating letters ──────────────────────────────────────
+   Flat mustard ink — no gradient, no glow, no sheen — to match the printed
+   1962 paper aesthetic. The only treatment is MOTION: each letter "coagulates"
+   into place, bleeding in blurred and oversized then sharpening and settling.
+   Per-letter stagger comes from inline animation-delay. */
+.ico-letter {
+  display: inline-block;
+  color: var(--mustard, #e8b842);
+  will-change: filter, transform, opacity;
+  animation: ico-coagulate 1.05s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+@keyframes ico-coagulate {
+  0%   { opacity: 0; filter: blur(16px); transform: translateY(0.32em) scale(1.5); }
+  60%  { opacity: 1; filter: blur(4px); }
+  100% { opacity: 1; filter: blur(0); transform: translateY(0) scale(1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .parallax-header { animation: none; }
+  .ico-letter { animation: none; opacity: 1; filter: none; transform: none; }
+}
+
