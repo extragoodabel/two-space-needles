@@ -175,11 +175,18 @@ export const INSERTS = [
       'Campaign updates, milestones, site-selection news, and volunteer opportunities straight to your inbox.',
     ],
     kit: true, // native subscribe form → Kit form 9687388
-    social: {
-      text: 'Follow us on Instagram',
-      label: '@TWOSPACENEEDLES',
-      href: 'https://www.instagram.com/twospaceneedles/',
-    },
+    socials: [
+      {
+        text: 'Follow us on Instagram',
+        label: '@TWOSPACENEEDLES',
+        href: 'https://www.instagram.com/twospaceneedles/',
+      },
+      {
+        text: 'And on LinkedIn',
+        label: 'TWO SPACE NEEDLES',
+        href: 'https://www.linkedin.com/company/two-space-needles/',
+      },
+    ],
   },
 
   {

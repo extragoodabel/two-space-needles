@@ -1,4 +1,4 @@
-import { useRef, useState, useCallback, useEffect, useMemo } from 'react';
+import { Fragment, useRef, useState, useCallback, useEffect, useMemo } from 'react';
 import {
   MOVING_LAYERS,
   BACKGROUND_LAYERS,
@@ -263,22 +263,21 @@ function CardSection({ insert, onPlayGame }) {
       )}
       {insert.image && <img className="card-section-image card-section-image--below" src={insert.image.src} alt={insert.image.alt || ''} draggable="false" />}
       {insert.kit && <KitSubscribe />}
-      {insert.social && (
-        <>
-          {insert.social.text && <p className="card-section-body card-section-followline">{insert.social.text}</p>}
+      {insert.socials && insert.socials.map((soc) => (
+        <Fragment key={soc.href}>
+          {soc.text && <p className="card-section-body card-section-followline">{soc.text}</p>}
           <a
             className="card-section-cta"
-            href={insert.social.href}
+            href={soc.href}
             target="_blank"
             rel="noreferrer"
             onClick={(e) => {
               e.preventDefault();
-              const href = insert.social.href;
-              pressFire(e, () => window.open(href, '_blank', 'noopener'));
+              pressFire(e, () => window.open(soc.href, '_blank', 'noopener'));
             }}
-          >{insert.social.label}</a>
-        </>
-      )}
+          >{soc.label}</a>
+        </Fragment>
+      ))}
       {insert.secondary && <p className="card-section-secondary">{insert.secondary}</p>}
     </section>
   );
