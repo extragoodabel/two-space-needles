@@ -65,7 +65,8 @@ export const lerp = (a, b, t) => a + (b - a) * t;
 // back layers last — so it reads as an expansive world rising into view rather
 // than objects popping in. All the lower/foreground layers stay DIMMED so they
 // don't pull focus from the lit needle.
-// STAGE MAP (RE-CHOREOGRAPHED 2026-07 — copy-relay structure, MAX_PROGRESS 2.5).
+// STAGE MAP (RE-CHOREOGRAPHED 2026-07 — copy-relay structure, MAX_PROGRESS 2.95 —
+// SECOND HALF STRETCHED (2026-07) so each late beat breathes).
 // Every stage is timed to a crawl block (see CRAWL_LINES in ParallaxScene);
 // ONLY progress timings changed in this remap — all position/offset numbers
 // are the original hand-tuned values.
@@ -73,42 +74,42 @@ export const lerp = (a, b, t) => a + (b - a) * t;
 //   0.35  → 0.95   TREELINES (5, 9, 11) rise — c3 emerges from behind them
 //                  (≈0.72, while c2 sits high) and they settle as c3 climbs.
 //   0.80  → 1.30   BUILDINGS rise to clustered-low, front-first, with c3.
-//   1.42  → 1.56   SECOND NEEDLE slides out + lights — fires DURING the
-//                  c4-exit / TSN-entry handoff (no park in between: the
-//                  three events are ONE continuous motion).
-//   1.75  → 2.10   FINALE: viewpoint rises, layers lock + illuminate
-//                  back→front (c5 exits during this). Was 1.0→1.5; affine
-//                  remap t' = 1.75 + (t − 1.0) × 0.7.
-//   2.10  → 2.5    iconic block + materializing "times two" ride off; the
-//                  campaign lockup MATERIALIZES in place at 2.38–2.48 (deck at 2.5).
+//   1.47  → 1.74   SECOND NEEDLE slides out + lights, beginning AS c4 moves
+//                  off (its top dissolves from ≈1.47); TSN copy crests
+//                  mid-slide (≈1.53) and both arrive at the balanced end
+//                  point together (needle 1.74, copy fully in ≈1.74).
+//   2.05  → 2.40   FINALE: viewpoint rises, layers lock + illuminate
+//                  back→front (c5 exits during this).
+//   2.40  → 2.95   iconic block + materializing "times two" ride FULLY off
+//                  (≈2.8); the campaign lockup MATERIALIZES at 2.82–2.92 (deck 2.95).
 const PARKED = [[0, 140], [1, 140]];
 const LAYER_DEFS = [
   // BUILDINGS — rise out of the ground from hidden (≈70) to a clustered-LOW
   // position (NOT final) at a CONSTANT (linear) pace, front-first, DIMMED.
   // Rise windows remapped into [0.80, 1.30] (riding c3); the final lift +
-  // illumination happens in the finale stage [1.75, 2.10].
-  { id: '1', src: 'A1.webp', grow: 1.2, linear: true, kf: [[0, 70], [0.923, 70], [1.19, 3], [1.75, 3], [1.925, 0], [2.1, 0]], dim: true, illum: { mode: 'uniform', start: 2.04, end: 2.1 } }, // plaza (front) — locks flush to the window bottom; illuminates LAST
-  { id: '2i', src: '2i.webp', grow: 0.6, linear: true, kf: [[0, 70], [0.964, 70], [1.231, 6], [1.75, 6], [1.925, 1], [2.1, 0]], dim: true, illum: { mode: 'uniform', start: 1.971, end: 2.034 } }, // glove statue — TALLEST of these; illuminates before the monorail (reads above it)
-  { id: '2ii', src: '2ii.webp', grow: 0.4, linear: true, kf: [[0, 70], [0.985, 70], [1.251, 4], [1.75, 4], [1.925, 0], [2.1, 0]], dim: true, illum: { mode: 'uniform', start: 2.02, end: 2.083 } }, // pavilion
-  { id: '3', src: 'A3.webp', grow: 0.55, linear: true, kf: [[0, 70], [1.005, 70], [1.272, 4], [1.75, 4], [1.925, -1], [2.1, 0]], dim: 0.1, illum: { mode: 'uniform', start: 1.992, end: 2.055 } }, // monorail — TALL, illuminates after the glove statue; dim floor 0.1 sinks its corner hot spot until it lights
-  { id: '4', src: 'A4.webp', grow: 0.45, linear: true, kf: [[0, 70], [1.026, 70], [1.292, 4], [1.75, 4], [1.925, 0], [2.1, 0]], dim: true, illum: { mode: 'uniform', start: 2.001, end: 2.064 } }, // arch panel
-  { id: 'ground', src: 'ground.webp', grow: 1.2, origin: [0.5, 0.864], linear: true, kf: [[0, 70], [0.944, 70], [1.21, 10], [1.75, 10], [1.925, -1], [2.1, 0]], dim: true, illum: { mode: 'uniform', start: 1.991, end: 2.054 } }, // floor
+  // illumination happens in the finale stage [2.05, 2.10].
+  { id: '1', src: 'A1.webp', grow: 1.2, linear: true, kf: [[0, 70], [0.923, 70], [1.19, 3], [2.05, 3], [2.225, 0], [2.4, 0]], dim: true, illum: { mode: 'uniform', start: 2.34, end: 2.4 } }, // plaza (front) — locks flush to the window bottom; illuminates LAST
+  { id: '2i', src: '2i.webp', grow: 0.6, linear: true, kf: [[0, 70], [0.964, 70], [1.231, 6], [2.05, 6], [2.225, 1], [2.4, 0]], dim: true, illum: { mode: 'uniform', start: 2.271, end: 2.334 } }, // glove statue — TALLEST of these; illuminates before the monorail (reads above it)
+  { id: '2ii', src: '2ii.webp', grow: 0.4, linear: true, kf: [[0, 70], [0.985, 70], [1.251, 4], [2.05, 4], [2.225, 0], [2.4, 0]], dim: true, illum: { mode: 'uniform', start: 2.32, end: 2.383 } }, // pavilion
+  { id: '3', src: 'A3.webp', grow: 0.55, linear: true, kf: [[0, 70], [1.005, 70], [1.272, 4], [2.05, 4], [2.225, -1], [2.4, 0]], dim: 0.1, illum: { mode: 'uniform', start: 2.292, end: 2.355 } }, // monorail — TALL, illuminates after the glove statue; dim floor 0.1 sinks its corner hot spot until it lights
+  { id: '4', src: 'A4.webp', grow: 0.45, linear: true, kf: [[0, 70], [1.026, 70], [1.292, 4], [2.05, 4], [2.225, 0], [2.4, 0]], dim: true, illum: { mode: 'uniform', start: 2.301, end: 2.364 } }, // arch panel
+  { id: 'ground', src: 'ground.webp', grow: 1.2, origin: [0.5, 0.864], linear: true, kf: [[0, 70], [0.944, 70], [1.21, 10], [2.05, 10], [2.225, -1], [2.4, 0]], dim: true, illum: { mode: 'uniform', start: 2.291, end: 2.354 } }, // floor
   // TREELINES — hold parked, then rise [0.35, 0.95]: moving through c2's
   // transit AND c3's emergence, settling only as c3 climbs the sky.
-  { id: '5', src: 'A5.webp', grow: 0.9, linear: true, kf: [[0, 21], [0.35, 21], [0.95, 6], [1.75, 6], [1.925, -2], [2.1, -6]], dim: true, illum: { mode: 'uniform', start: 1.981, end: 2.044 } }, // treeline 5 (front planting) — final raised so full tree trunks show at bottom-left
-  { id: '6', src: 'A6.webp', grow: 0.18, kf: [[0, 56], [0.496, 0], [1.75, 0], [1.925, -1.5]], kfX: [[0, -5.5], [1, -5.5]], illum: { start: 0.248, end: 0.56, reach: 70 } }, // NEEDLE near — already lit (top-down); shifted 5.5% LEFT throughout to open the centre
-  { id: '7', src: '7i.webp', grow: 0.18, panX: -0.18, linear: true, kf: [[0, 70], [0.8, 70], [1.262, 14], [1.75, 14], [1.925, 12], [2.1, 0]], kfX: [[0, -5], [1, -5]], scale: 0.9, origin: [0.196, 0.70], dim: 0.09, illum: { mode: 'uniform', start: 1.971, end: 2.034 } }, // balloons (7i) — nudged 3% LEFT + shrunk 10% (anchored at the pole bases); dim floor 0.09 sinks its flag hot spot until it lights
-  { id: '8', src: 'A8.webp', grow: 1.5, panX: 0.25, linear: true, kf: [[0, 70], [0.821, 70], [1.282, 14], [1.75, 14], [1.925, 2], [2.1, 0]], dim: true, illum: { mode: 'uniform', start: 1.961, end: 2.024 } }, // golden arches
-  { id: '9', src: 'A9.webp', grow: 0.4, linear: true, kf: [[0, 32], [0.35, 32], [0.95, 9], [1.75, 9], [1.925, 5], [2.1, -1]], dim: true, illum: { mode: 'uniform', start: 1.952, end: 2.015 } }, // treeline 9 (mid) — final raised so balloon-pole bottoms end within the foliage
-  { id: '10', src: 'A10.webp', grow: 0.3, linear: true, kf: [[0, 70], [0.841, 70], [1.3, 14], [1.75, 14], [1.925, 11], [2.1, 0]], dim: true, illum: { mode: 'uniform', start: 1.942, end: 2.005 } }, // roof (climate-pledge arena)
-  { id: '11', src: 'A11.webp', grow: 0.14, linear: true, kf: [[0, 30], [0.35, 30], [0.95, 12], [1.42, 12], [1.56, 10], [1.925, 8], [2.1, 0]], dim: true, illum: { mode: 'uniform', start: 1.932, end: 1.995 } }, // treeline 11 (back) — creeps up a touch during the split to sell it; illuminates FIRST
+  { id: '5', src: 'A5.webp', grow: 0.9, linear: true, kf: [[0, 21], [0.35, 21], [0.95, 6], [2.05, 6], [2.225, -2], [2.4, -6]], dim: true, illum: { mode: 'uniform', start: 2.281, end: 2.344 } }, // treeline 5 (front planting) — final raised so full tree trunks show at bottom-left
+  { id: '6', src: 'A6.webp', grow: 0.18, kf: [[0, 56], [0.496, 0], [2.05, 0], [2.225, -1.5]], kfX: [[0, -5.5], [1, -5.5]], illum: { start: 0.248, end: 0.56, reach: 70 } }, // NEEDLE near — already lit (top-down); shifted 5.5% LEFT throughout to open the centre
+  { id: '7', src: '7i.webp', grow: 0.18, panX: -0.18, linear: true, kf: [[0, 70], [0.8, 70], [1.262, 14], [2.05, 14], [2.225, 12], [2.4, 0]], kfX: [[0, -5], [1, -5]], scale: 0.9, origin: [0.196, 0.70], dim: 0.09, illum: { mode: 'uniform', start: 2.271, end: 2.334 } }, // balloons (7i) — nudged 3% LEFT + shrunk 10% (anchored at the pole bases); dim floor 0.09 sinks its flag hot spot until it lights
+  { id: '8', src: 'A8.webp', grow: 1.5, panX: 0.25, linear: true, kf: [[0, 70], [0.821, 70], [1.282, 14], [2.05, 14], [2.225, 2], [2.4, 0]], dim: true, illum: { mode: 'uniform', start: 2.261, end: 2.324 } }, // golden arches
+  { id: '9', src: 'A9.webp', grow: 0.4, linear: true, kf: [[0, 32], [0.35, 32], [0.95, 9], [2.05, 9], [2.225, 5], [2.4, -1]], dim: true, illum: { mode: 'uniform', start: 2.252, end: 2.315 } }, // treeline 9 (mid) — final raised so balloon-pole bottoms end within the foliage
+  { id: '10', src: 'A10.webp', grow: 0.3, linear: true, kf: [[0, 70], [0.841, 70], [1.3, 14], [2.05, 14], [2.225, 11], [2.4, 0]], dim: true, illum: { mode: 'uniform', start: 2.242, end: 2.305 } }, // roof (climate-pledge arena)
+  { id: '11', src: 'A11.webp', grow: 0.14, linear: true, kf: [[0, 30], [0.35, 30], [0.95, 12], [1.47, 12], [1.74, 10], [2.225, 8], [2.4, 0]], dim: true, illum: { mode: 'uniform', start: 2.232, end: 2.295 } }, // treeline 11 (back) — creeps up a touch during the split to sell it; illuminates FIRST
   // NEEDLE far (12) — hides DIRECTLY BEHIND needle 6 (its disc tracks 6's disc:
   // +8.9% lower, −19.6% left) until c4 sits 3/4 up screen, then slides
   // sideways/up into its resting spot and lights from the top [1.57, 1.71].
   { id: '12', src: 'A12.webp', grow: 0.12,
-    kf:  [[0, 65], [0.496, 9], [1.42, 9], [1.56, 0], [1.925, -1.5]],
-    kfX: [[0, -25.1], [1.42, -25.1], [1.56, -5.5]],
-    illum: { start: 1.44, end: 1.55, reach: 70 } },
+    kf:  [[0, 65], [0.496, 9], [1.47, 9], [1.74, 0], [2.225, -1.5]],
+    kfX: [[0, -25.1], [1.47, -25.1], [1.74, -5.5]],
+    illum: { start: 1.52, end: 1.72, reach: 70 } },
 
   // ── ELEVATORS (decorative; ride the needle trunks) ──────────────────────
   // `decor` = not independently hoverable; `deckParent` = lifts with its needle.
@@ -116,7 +117,7 @@ const LAYER_DEFS = [
   // trunk), so it stays on the trunk through the whole sequence. Sits just in
   // front of needle 6 (z 931).
   { id: '6e', src: 'elevator-top.webp', decor: true, deckParent: '6', z: 931, dim: true,
-    kf:  [[0, 56], [0.496, 0], [1.75, 0], [1.925, -1.5]],
+    kf:  [[0, 56], [0.496, 0], [2.05, 0], [2.225, -1.5]],
     kfX: [[0, -4.6], [1, -4.6]],
     illum: { mode: 'uniform', start: 0.248, end: 0.56 } },
   // BACK elevator: needle 12's motion + a constant offset that relocates the car
@@ -125,9 +126,9 @@ const LAYER_DEFS = [
   // around the car (origin) so it stays put. Sits just in front of needle 12.
   { id: '12e', src: 'elevator-bottom.webp', decor: true, deckParent: '12', z: 871, dim: true,
     scale: 0.78, origin: [0.2144, 0.7615],
-    kf:  [[0, 28.85], [0.496, -27.15], [1.42, -27.15], [1.56, -36.15], [1.925, -37.65]],
-    kfX: [[0, -3.04], [1.42, -3.04], [1.56, 16.56]],
-    illum: { mode: 'uniform', start: 1.44, end: 1.55 } },
+    kf:  [[0, 28.85], [0.496, -27.15], [1.47, -27.15], [1.74, -36.15], [2.225, -37.65]],
+    kfX: [[0, -3.04], [1.47, -3.04], [1.74, 16.56]],
+    illum: { mode: 'uniform', start: 1.52, end: 1.72 } },
 ];
 
 export const MOVING_LAYERS = LAYER_DEFS.map((d, i) => ({

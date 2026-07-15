@@ -161,7 +161,7 @@ body {
 .parallax-crawl-logo {
   width: 28.8cqw; /* matches the retired .parallax-logo footprint */
   aspect-ratio: 272 / 440;
-  margin: 0.2cqh 0 0 auto; /* nudged up tight beneath "FOR", right edges flush */
+  margin: -1.9cqh 0 0 auto; /* tucked up so the top needle tip just overlaps the "FOR" row (split the difference between 0.2 and -4) */
   background: var(--mustard, #e8b842);
   -webkit-mask-size: contain;
   mask-size: contain;
@@ -194,6 +194,170 @@ body {
   text-transform: uppercase;
   color: var(--mustard, #e8b842);
 }
+
+/* ── MENU button — crisp, on-brand: mustard hairline box, display type.
+   Sits just below the locked logo, right edge on the copy margin. Hidden
+   until the deck has breathed (menuOn), then glimmers in. */
+.parallax-menubtn-wrap {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  container-type: size;
+  z-index: 1200; /* above the moving layers — the button must take clicks */
+}
+.parallax-menubtn {
+  position: absolute;
+  top: 36.9cqh; /* tracks the logo's settled position (up 2.1cqh from the original 39) — original buffer to the logo restored */
+  min-width: 15cqw; /* fixed box: the X occupies EXACTLY this slot when open */
+  box-sizing: border-box;
+  right: clamp(0.9rem, 3dvh, 2.2rem); /* same margin as the lockup + copy */
+  pointer-events: auto;
+  appearance: none;
+  background: none;
+  border: 1px solid var(--mustard, #e8b842);
+  color: var(--mustard, #e8b842);
+  font-family: var(--font-display);
+  font-weight: 300;
+  text-transform: uppercase;
+  letter-spacing: 0.34em;
+  text-indent: 0.34em; /* recentre — tracking adds a phantom space after the last letter */
+  font-size: 2.3cqw;
+  padding: 1.2cqh 2.8cqw;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  /* materialize: same glimmer family as the lockup */
+  opacity: 0;
+  filter: blur(6px);
+  transform: scale(0.95);
+  transition: opacity 0.9s ease, filter 0.9s ease, transform 0.9s ease,
+    background-color 0.25s ease, color 0.25s ease;
+}
+.parallax-menubtn.is-on {
+  opacity: 1;
+  filter: blur(0);
+  transform: scale(1);
+}
+.parallax-menubtn:hover {
+  background: var(--mustard, #e8b842);
+  color: var(--midnight-deep, #0b1428);
+}
+.parallax-menubtn:focus-visible {
+  outline: 1px solid var(--mustard, #e8b842);
+  outline-offset: 3px;
+}
+/* the close glyph: SAME box, SAME anchor as MENU (no tracking offset) */
+.parallax-menubtn--close {
+  letter-spacing: 0;
+  text-indent: 0;
+}
+/* the EXPANDED MENU — a right-aligned column of page links in the freed
+   sky, same treatment family as the button it grew from. Links glimmer in
+   staggered (transition-delay inline). */
+.parallax-menupanel {
+  position: absolute;
+  top: 5.5cqh; /* balanced in the open sky: roughly even air above the column and below it, over the X in the MENU slot */
+  right: clamp(0.9rem, 3dvh, 2.2rem); /* the copy margin */
+  display: flex;
+  flex-direction: column;
+  align-items: stretch; /* equal-width cells - a column grid */
+  width: max-content;
+  pointer-events: none;
+}
+.parallax-menulink {
+  pointer-events: auto;
+  appearance: none;
+  background: none;
+  border: 1px solid var(--mustard, #e8b842); /* each link is its own cell, like the MENU button */
+  margin-top: -1px; /* collapse shared borders - zero space between cells */
+  box-sizing: border-box;
+  padding: 1.6cqh 3.4cqw;
+  text-align: center;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  font-family: var(--font-display);
+  font-weight: 300;
+  text-transform: uppercase;
+  letter-spacing: 0.28em;
+  text-indent: 0.28em;
+  font-size: 3cqw;
+  color: var(--mustard, #e8b842);
+  opacity: 0;
+  filter: blur(5px);
+  transform: translateY(1cqh);
+  transition: opacity 0.6s ease, filter 0.6s ease, transform 0.6s ease,
+    background-color 0.12s ease, color 0.12s ease;
+}
+.parallax-menulink:first-child {
+  margin-top: 0;
+}
+.parallax-menupanel.is-on .parallax-menulink {
+  opacity: 1;
+  filter: blur(0);
+  transform: translateY(0);
+}
+/* hover + click feedback: the ONE consistent treatment — invert to mustard
+   fill with midnight type, exactly like the MENU button and the X */
+.parallax-menulink:hover,
+.parallax-menulink.is-flash,
+.parallax-menulink:active {
+  background: var(--mustard, #e8b842);
+  color: var(--midnight-deep, #0b1428);
+}
+.parallax-menulink:focus-visible {
+  outline: 1px solid var(--mustard, #e8b842);
+  outline-offset: 3px;
+}
+
+
+/* ── PLACE NEEDLES overlay — fullscreen, above everything. Same-origin
+   iframe (public/game), so it opens instantly with no cross-domain flash. */
+.parallax-gameoverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 3000;
+  background: var(--midnight-deep, #0b1428);
+  /* PUSH transition: transform is driven per-frame from JS (gamePush) so
+     the game and the card move as one rigid body after contact — no CSS
+     transition here, it would fight the rAF loop */
+  transform: translateX(100%);
+  will-change: transform;
+}
+.parallax-gameoverlay-frame {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
+/* EXIT — red-outlined cell directly above the game's mute toggle (which
+   sits at top:68px right:12px inside the iframe), matched in shape so the
+   two read as one column of controls */
+/* ✕ — ICON CELL (2026-07): 40px square, vermilion, stacked above the game's
+   speaker cell (same size, mustard) — one icon column at right:12px */
+.parallax-gameoverlay-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  appearance: none;
+  box-sizing: border-box;
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  background: none;
+  border: 0;
+  padding: 0;
+  color: var(--vermilion, #d9342b);
+  font-family: var(--font-display);
+  font-size: 1.35rem;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: color 0.15s ease, transform 0.15s ease;
+}
+.parallax-gameoverlay-close:hover { color: #f05446; transform: scale(1.15); }
+.parallax-gameoverlay-close:focus,
+.parallax-gameoverlay-close:focus-visible { outline: none; box-shadow: none; }
 
 /* static atmosphere (sky, stars, searchlights, distant foliage) stays bound to
    the 9:16 frame so it never spills into the window margins */
@@ -252,21 +416,45 @@ body {
   color: var(--cream);
   transition: opacity 0.4s ease;
 }
-/* the intuitive section label (nav-style), once at the top of the card */
+/* the section label ("ABOUT", "FAQ", …) — always an EYEBROW, never the
+   heading: small, tracked, mustard. The FIRST insert title on each card is
+   the main bold heading (see below). */
 .card-section-heading {
   max-width: 40rem;
-  margin: 0 auto clamp(1.4rem, 4vw, 2.2rem);
+  margin: 0 auto clamp(0.6rem, 2vw, 1rem);
   font-family: var(--font-display);
+  font-size: 0.78rem;
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.12em;
-  font-size: clamp(1.9rem, 6.5vw, 3rem);
+  letter-spacing: 0.3em;
   line-height: 1;
-  color: var(--cream);
+  color: var(--mustard, #e8b842);
 }
 .card-section {
   max-width: 40rem;
   margin: 0 auto clamp(2rem, 6vw, 3.5rem);
+}
+/* statement-only lead section: the next section follows immediately */
+.card-section.is-lead { margin-bottom: 0; }
+/* mandated one-word-per-line headings (titleLines) */
+.card-section-titleline {
+  display: block;
+}
+/* per-card head alignment: right-justified eyebrow + main heading (FAQ —
+   balances the illustration in the card's upper-left) */
+.parallax-card-content.head-right .card-section-heading,
+.parallax-card-content.head-right .card-section:first-of-type .card-section-title {
+  text-align: right;
+}
+
+/* the FIRST insert title on EVERY card is the main bold heading; later
+   section titles stay subheadings */
+.parallax-card-content .card-section:first-of-type .card-section-title {
+  font-size: clamp(1.9rem, 6.5vw, 3rem);
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: var(--cream, #f4eee0);
+  line-height: 1.05;
 }
 .card-section-meta {
   display: flex;
@@ -301,6 +489,18 @@ body {
   background: var(--mustard);
   margin: 1.1rem 0;
 }
+/* inline section image (e.g. merch) — sits between the rule and the copy */
+.card-section-image {
+  display: block;
+  width: 100%;
+  max-width: 26rem;
+  height: auto;
+  margin: 0 0 1.1rem;
+  box-sizing: border-box;
+  border: 2px solid var(--mustard, #e8b842); /* gold frame — on brand */
+}
+.card-section-image--below { margin: 1.4rem 0 0; } /* sits under the CTA */
+
 .card-section-body {
   font-family: var(--font-body, 'Work Sans', system-ui, sans-serif);
   font-size: clamp(0.95rem, 2.3vw, 1.05rem);
@@ -351,11 +551,125 @@ body {
   font-size: 0.8rem;
   font-weight: 600;
   text-decoration: none;
+  border: 0;
   border-radius: 2px;
-  transition: background 0.15s ease, transform 0.1s ease;
+  cursor: pointer;
+  /* VINTAGE PUSH-BUTTON (generalized from Play): raised mechanical key */
+  box-shadow: 0 5px 0 #9c7a1e, 0 9px 14px rgba(0, 0, 0, 0.35);
+  animation: cta-press 3.4s ease-in-out infinite;
+  will-change: transform;
 }
-.card-section-cta:hover { background: var(--vermilion, #e0472c); color: var(--cream); }
-.card-section-cta:active { transform: scale(0.98); }
+.card-section-cta:hover {
+  animation-play-state: paused;
+  transform: translateY(0);
+  box-shadow: 0 5px 0 #8a2119, 0 9px 14px rgba(0, 0, 0, 0.35);
+}
+/* CLICK MECHANIC: pressed fully down + lit red (is-pressed is applied for
+   ~200ms before the action fires, so the press is actually seen) */
+.card-section-cta:active,
+.card-section-cta.is-pressed {
+  animation: none;
+  transform: translateY(4px);
+  background: var(--vermilion, #d9342b);
+  color: var(--cream, #f2e8cc);
+  box-shadow: 0 1px 0 #8a2119, 0 3px 5px rgba(0, 0, 0, 0.3);
+}
+/* per-card option: CTA rides the right edge of the copy column */
+.parallax-card-content.cta-right .card-section-cta {
+  display: block;
+  width: max-content;
+  margin-left: auto;
+}
+
+/* social line (e.g. Instagram) — quiet text link, follows the page's CTA
+   justification */
+.card-section-social {
+  margin: 0.9rem 0 0;
+  font-size: 0.8rem;
+  letter-spacing: 0.03em;
+}
+.card-section-social { color: var(--cream, #f2e8cc); }
+/* the follow line reads as body copy and stays LEFT even on cta-right cards */
+.parallax-card-content.cta-right .card-section-followline { text-align: left; margin-top: 1.2rem; }
+.parallax-card-content.cta-right .card-section-social { text-align: right; }
+/* fine print stays LEFT even on cta-right cards — clear of the ✕ */
+
+/* ── native Kit subscribe row: site field + push-button, one rail ── */
+.kit-subscribe {
+  display: flex;
+  align-items: stretch;
+  gap: 0.8rem;
+  margin: 1.4rem 0 0;
+  flex-wrap: wrap;
+}
+.kit-input {
+  flex: 1 1 12rem;
+  min-width: 0;
+  appearance: none;
+  background: rgba(11, 20, 40, 0.35);
+  border: 1px solid rgba(242, 232, 204, 0.45);
+  border-radius: 2px;
+  padding: 0.7rem 1rem;
+  font-family: var(--font-body, 'Work Sans', system-ui, sans-serif);
+  font-size: 0.95rem;
+  color: var(--cream, #f2e8cc);
+}
+.kit-input::placeholder { color: rgba(242, 232, 204, 0.55); }
+.kit-input:focus { outline: none; border-color: var(--mustard, #e8b842); }
+/* the button rides the row, not the page's right-rail block rule */
+.parallax-card-content.cta-right .kit-subscribe .card-section-cta {
+  display: inline-block;
+  width: auto;
+  margin: 0;
+}
+.kit-subscribe .card-section-cta { margin: 0; }
+.kit-success { color: var(--mustard, #e8b842); margin-top: 1.4rem; }
+.kit-error {
+  flex-basis: 100%;
+  margin: 0.4rem 0 0;
+  font-size: 0.8rem;
+  color: var(--vermilion-soft, #e55c50);
+}
+
+/* discreet credits at the card foot — barely-there until wanted */
+.card-credits { margin: 2.4rem 0 0.5rem; }
+.card-credits-btn {
+  appearance: none;
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  font-family: var(--font-display);
+  font-size: 0.62rem;
+  font-weight: 400;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: rgba(244, 238, 224, 0.45);
+  transition: color 0.15s ease;
+}
+.card-credits-btn:hover { color: var(--mustard, #e8b842); }
+.card-credits-btn:focus,
+.card-credits-btn:focus-visible { outline: none; }
+.card-credits-logo {
+  display: block;
+  width: 7.5rem;
+  height: auto;
+  margin: 0.9rem 0 0.8rem;
+}
+.card-credits-body {
+  margin-top: 0.7rem;
+  font-size: 0.74rem;
+  line-height: 1.5;
+  color: rgba(244, 238, 224, 0.6);
+}
+.card-credits-body p { margin: 0 0 0.5rem; }
+.card-credits-body a {
+  color: rgba(244, 238, 224, 0.75);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.card-credits-body a:hover { color: var(--mustard, #e8b842); }
+
 .card-section-secondary {
   margin: 1.2rem 0 0;
   font-size: 0.74rem;
@@ -364,25 +678,185 @@ body {
   font-style: italic;
 }
 
-/* close (✕) — the deliberate way out of a card */
+/* close (✕) — the deliberate way out of a card. UNOBTRUSIVE (2026-07):
+   top-right corner, no circle/box — just the mustard glyph, with a
+   GENEROUS invisible hit area (the whole 3.6rem square is clickable). */
 .parallax-card-close {
   position: absolute;
-  bottom: clamp(0.75rem, 3vw, 1.5rem);
-  right: clamp(0.75rem, 3vw, 1.5rem);
+  bottom: clamp(0.2rem, 1.2vw, 0.6rem);
+  right: clamp(0.2rem, 1.2vw, 0.6rem);
   z-index: 2;
-  width: 2.4rem;
-  height: 2.4rem;
+  width: 3.6rem;
+  height: 3.6rem;
   display: grid;
   place-items: center;
-  border-radius: 50%;
-  border: 1.5px solid var(--mustard);
-  background: rgba(11, 20, 40, 0.55);
-  color: var(--mustard);
-  font-size: 1rem;
+  border: 0;
+  background: none;
+  color: var(--vermilion, #d9342b);
+  font-size: 1.3rem;
+  font-weight: 700;
+  line-height: 1;
   cursor: pointer;
-  transition: background 0.15s ease, color 0.15s ease;
+  -webkit-tap-highlight-color: transparent;
+  transition: color 0.15s ease, transform 0.15s ease;
 }
-.parallax-card-close:hover { background: var(--mustard); color: var(--midnight, #0b1428); }
+.parallax-card-close:hover { color: #f05446; transform: scale(1.15); }
+/* Play — fixed to the card (not the scrolling content), bottom-RIGHT, on the
+   same row as the retreat arrow */
+.parallax-card-playfixed {
+  position: absolute;
+  /* balanced with the copy block above — lifted out of the corner, nudged
+     inboard (tuned live) */
+  bottom: 22%;
+  right: 12%;
+  z-index: 2;
+  margin: 0;
+  cursor: pointer;
+  border: 0;
+  /* PROMINENT: larger than the in-flow CTAs — this is the page's action */
+  font-size: 1.05rem;
+  padding: 1rem 2.4rem;
+  letter-spacing: 0.16em;
+}
+/* the intermittent compression shared by ALL card CTAs: raised for most of
+   the cycle, then a smooth press-and-release — the press LIGHTS the button
+   red, like a finger landing on it */
+@keyframes cta-press {
+  0%, 76% { transform: translateY(0); box-shadow: 0 5px 0 #9c7a1e, 0 9px 14px rgba(0, 0, 0, 0.35); background: var(--mustard, #e8b842); color: var(--midnight, #0b1428); }
+  84%, 90% { transform: translateY(4px); box-shadow: 0 1px 0 #8a2119, 0 3px 5px rgba(0, 0, 0, 0.3); background: var(--vermilion, #d9342b); color: var(--cream, #f2e8cc); }
+  100% { transform: translateY(0); box-shadow: 0 5px 0 #9c7a1e, 0 9px 14px rgba(0, 0, 0, 0.35); background: var(--mustard, #e8b842); color: var(--midnight, #0b1428); }
+}
+
+/* ── CARD-FOOT MENU — at the very bottom of every card: a MENU cell that
+   expands UP into the other pages' boxed links. Same treatment family as
+   the main menu (outlined cells, collapsed borders, invert on hover/flash)
+   in the card's ink so it reads on the paper. ── */
+/* cq container so the card menu sizes/positions EXACTLY like the main menu
+   (same cqh/cqw numbers as .parallax-menupanel) */
+.parallax-cardmenu-wrap {
+  position: absolute;
+  inset: 0;
+  container-type: size;
+  pointer-events: none;
+  z-index: 3;
+}
+.parallax-cardmenu {
+  position: absolute;
+  top: 5.5cqh; /* = the main menu column's top — MENU sits where ABOUT sits */
+  right: clamp(0.9rem, 3dvh, 2.2rem); /* = the main menu's right margin */
+  pointer-events: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end; /* right edges stay pinned; the cells grow leftward */
+  width: max-content;
+}
+.parallax-cardmenu-btn,
+.parallax-cardmenu-link {
+  appearance: none;
+  background: none;
+  border: 1px solid var(--mustard, #e8b842);
+  box-sizing: border-box;
+  width: 36cqw; /* ONE fixed cell width ≈ the main menu's widest cell */
+  padding: 1.6cqh 0; /* main-menu cell padding (vertical) */
+  text-align: center;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  font-family: var(--font-display);
+  font-weight: 300;
+  text-transform: uppercase;
+  letter-spacing: 0.28em;
+  text-indent: 0.28em;
+  font-size: 3cqw; /* = main menu link size */
+  color: var(--mustard, #e8b842);
+  transition: background-color 0.12s ease, color 0.12s ease;
+}
+/* dropdown cells are OPAQUE for readability over any card art: yellow field,
+   blue ink, blue outline */
+.parallax-cardmenu-link {
+  margin-top: -1px; /* collapsed shared borders */
+  background: var(--mustard, #e8b842);
+  color: var(--midnight-deep, #0b1428);
+  border-color: var(--midnight-deep, #0b1428);
+}
+.parallax-cardmenu-btn + .parallax-cardmenu-panel .parallax-cardmenu-link:first-child { margin-top: -1px; }
+/* the dropdown UNROLLS: always mounted, revealed by a smooth max-height +
+   fade + slight downward settle (and the reverse on close) */
+.parallax-cardmenu-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  overflow: hidden;
+  max-height: 0;
+  opacity: 0;
+  transform: translateY(-6px);
+  pointer-events: none;
+  transition: max-height 0.38s ease, opacity 0.28s ease, transform 0.38s ease;
+}
+.parallax-cardmenu-panel.is-on {
+  max-height: 60cqh;
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+.parallax-cardmenu-link:first-child { margin-top: 0; }
+/* MENU cell: compact at rest, GLIDING out to the full cell width as the
+   menu opens (fixed-to-fixed width, so the motion is smooth — no jump) */
+/* MENU stays as the TOP CELL of the open menu: it glides out to the full
+   cell width, relabels MAIN MENU, and holds the filled highlight while the
+   page cells unroll beneath it. Clicking it exits to the main menu. */
+.parallax-cardmenu-btn {
+  width: 17cqw;
+  transition: width 0.38s ease, background-color 0.12s ease, color 0.12s ease;
+}
+.parallax-cardmenu-btn.is-open {
+  width: 36cqw;
+  background: var(--mustard, #e8b842);
+  color: var(--midnight-deep, #0b1428);
+  /* match the cells below EXACTLY: blue outline (a mustard border on a
+     mustard fill made the yellow field read 1px larger on every side) */
+  border-color: var(--midnight-deep, #0b1428);
+}
+/* open MAIN MENU hovers deep gold like every other yellow cell */
+.parallax-cardmenu-btn.is-open:hover {
+  background: var(--mustard-deep, #c99820);
+  color: var(--midnight-deep, #0b1428);
+}
+/* per-card option (About): the resting MENU is OPAQUE — yellow field, blue
+   ink, blue outline — so it reads over the card's busy backdrop; hover goes
+   deeper gold */
+.parallax-cardmenu.menu-solid .parallax-cardmenu-btn {
+  background: var(--mustard, #e8b842);
+  color: var(--midnight-deep, #0b1428);
+  border-color: var(--midnight-deep, #0b1428);
+}
+.parallax-cardmenu.menu-solid .parallax-cardmenu-btn:hover {
+  background: var(--mustard-deep, #c99820);
+  color: var(--midnight-deep, #0b1428);
+}
+.parallax-cardmenu-btn.is-flash {
+  background: var(--vermilion, #d9342b);
+  color: var(--cream, #f2e8cc);
+}
+/* yellow outline at rest → solid yellow with blue ink when hovered */
+.parallax-cardmenu-btn:hover {
+  background: var(--mustard, #e8b842);
+  color: var(--midnight-deep, #0b1428);
+}
+/* dropdown cells: deeper gold on hover; CLICK flashes red (the site's
+   press language) before the page opens */
+.parallax-cardmenu-link:hover {
+  background: var(--mustard-deep, #c99820);
+  color: var(--midnight-deep, #0b1428);
+}
+.parallax-cardmenu-link.is-flash,
+.parallax-cardmenu-link:active {
+  background: var(--vermilion, #d9342b);
+  color: var(--cream, #f2e8cc);
+}
+.parallax-cardmenu-btn:focus,
+.parallax-cardmenu-btn:focus-visible,
+.parallax-cardmenu-link:focus,
+.parallax-cardmenu-link:focus-visible { outline: none; }
 
 /* sparkle overlay — sits above the moving layers, below the atmospheric film */
 .parallax-glimmers {

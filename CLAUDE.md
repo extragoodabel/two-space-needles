@@ -140,7 +140,7 @@ canvas.
 
 ## 5. The core model: one `progress` value drives everything
 
-Everything is a function of a single scalar **`progress`** that runs `0 → 2.5`
+Everything is a function of a single scalar **`progress`** that runs `0 → 2.95`
 (`MAX_PROGRESS`). The document never scrolls; `useParallaxInput` intercepts
 wheel/touch and converts it to `progress`, and the whole scene is rendered from
 that number every frame. There is no native scroll, so no bounce/overscroll.
@@ -286,13 +286,13 @@ The layer‑transition timing is split by a class on `.parallax-frame`:
 
 `CARD_MAP` maps five menu layer ids to a card:
 
-| layer | landmark        | card art               | section       | inserts                          |
-|-------|-----------------|------------------------|---------------|----------------------------------|
-| `2ii` | science pavilion| A2A4A5_fullcard        | **About**     | oversight                        |
-| `3`   | monorail        | A3A5_fullcard          | **The Proposal** | proposal                      |
-| `7`   | balloons        | A7A11_fullcard         | **FAQ**       | faq                              |
-| `8`   | golden arches   | A8A9_fullcard          | **The Vision**| vision                           |
-| `10`  | arena/roof      | A9A10A11_fullcard      | **Get Involved** | movement, merch, donate-land  |
+| layer | landmark        | card art               | section       | inserts                              |
+|-------|-----------------|------------------------|---------------|--------------------------------------|
+| `2ii` | science pavilion| A2A4A5_fullcard        | **About**     | about-blindspot, about-proposal, about-vision |
+| `7`   | balloons        | A7A11_fullcard         | **FAQ**       | faq                                  |
+| `8`   | golden arches   | A8A9_fullcard          | **Merch**     | merch                                |
+| `3`   | monorail        | A3A5_fullcard          | **Game**      | game (Place Needles — cta href TODO) |
+| `10`  | arena/roof      | A9A10A11_fullcard      | **Get Involved** | movement, donate-land             |
 
 Each entry also has `startY` (how far the card is pushed DOWN at open so its
 top‑of‑card illustration lines up with that landmark in the scene) and
@@ -393,8 +393,9 @@ reduced‑motion.
 
 ## 14. Copy / content (`src/data/inserts.js`)
 
-`INSERTS` holds 7 entries (`oversight, proposal, vision, movement, faq, merch,
-donate-land`), each `{ id, title, tagline, body[], list?, faq?, cta?, secondary?,
+`INSERTS` holds 8 entries (`about-blindspot, about-proposal, about-vision,
+game, movement, faq, merch, donate-land`) — restructured 2026-07 from the
+petition into five pages (About merges the old Oversight/Proposal/Vision), each `{ id, title, tagline, body[], list?, faq?, cta?, secondary?,
 … }`. The cards render `title` as a **subheading** under the card's `section`
 heading. The old `stamp`/`tabNum` "Exhibit A / № I" chrome was removed from the
 render (fields remain in the data, unused).
@@ -412,9 +413,9 @@ lines; a mask dissipates blocks near the frame top and hides them below the
 horizon. ENDING (v3): c6 "AN / ICONIC / VIEW" rides the crawl; c7 "TIMES / TWO"
 materializes beneath it (`fadeIn`), both ride off; then the CAMPAIGN LOCKUP
 ("The Campaign For" one line + logo) does NOT ride the crawl — it MATERIALIZES
-in place (`.parallax-lockup`, blur+scale glimmer-in over progress 2.38→2.48)
+in place (`.parallax-lockup`, blur+scale glimmer-in over progress 2.82→2.92)
 at its resting spot (text row 4, right edge on the copy margin, logo beneath)
-just as "times two" rides off and the scroll completes at MAX_PROGRESS 2.5.
+after "times two" has fully ridden off, as the scroll completes at MAX_PROGRESS 2.95.
 No mask-lift machinery needed anymore — nothing locks inside the crawl. The crawl fades with the chrome when a card opens. The old header /
 logo-reveal / splitLetters coagulation system is RETIRED but kept in the file
 for reuse. Copy is user-approved verbatim — do not reword.
@@ -475,6 +476,32 @@ first."* Get sign‑off before rewording.
 - Possible future: wire the copy improvements the user approves, and revisit
   whether the second‑needle "times two" splash line should match the live site's
   *"timeless view, times two."*
+
+---
+
+## 17.5 The Place Needles game (integrated 2026-07)
+
+The game (separate Cursor project, React 19 + Vite 7 + Google Maps 3D, lives
+in `~/Desktop/Two Space Needles Game/two-space-needles`) is mounted SAME-DOMAIN:
+
+- Its built bundle lives at `public/game/` → served at `/game/` on the site's
+  own deployment. The Game card's "Play Place Needles" CTA opens a fullscreen
+  same-origin iframe overlay (`.parallax-gameoverlay`, src `/game/index.html`)
+  with a ✕ that returns to the site in place.
+- `api/generate-polaroid.js` (copied from the game repo) is a Vercel function;
+  it needs `OPENAI_API_KEY` / `REPLICATE_API_TOKEN` in the site's Vercel env.
+- The GAME REPO was made path-portable: `base: './'` in its vite.config +
+  ~19 absolute public-asset refs relativized in MapScene.jsx /
+  AudioProvider.jsx. Its own twospaceneedles.org deployment is unaffected
+  (relative URLs work at the root too).
+- The currently mounted `public/game/` bundle is the repo's last dist,
+  POST-PROCESSED to relative paths. To refresh it after game changes:
+  build the game on macOS (`npm run build` in the game repo — its new
+  relative base makes the output portable), then copy `dist/*` over
+  `public/game/`.
+- Google Maps keys (`VITE_GOOGLE_MAPS_API_KEY`, `VITE_GOOGLE_MAP_ID`) are
+  inlined at game build time from the game repo's `.env.local`; their Cloud
+  Console allowlist must include the site's domain.
 
 ---
 

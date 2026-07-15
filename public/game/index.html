@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="./vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Work+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
+    <title>two-space-needles</title>
+    <script type="module" crossorigin src="./assets/index-tsnskin3.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-tsnskin3.css">
+  
+    <style>
+      /* ── TSN AUDIO WINDOW (site-brand shim; inert once the rebuilt game
+             ships its own modal, which uses .exhibit-audio-button) ── */
+      .tsn-audio-backdrop{position:fixed;inset:0;z-index:20000;background:rgba(11,20,40,.55)}
+      .tsn-audio-panel{position:fixed;z-index:20001;top:50%;left:50%;transform:translate(-50%,-50%);
+        width:min(320px,88vw);background:#13243F;border:2px solid #F0B429;color:#F2E8CC;
+        font-family:'Work Sans',system-ui,sans-serif;padding:0 0 18px}
+      .tsn-audio-head{display:flex;align-items:center;justify-content:space-between;
+        padding:12px 16px;border-bottom:2px solid #F0B429}
+      .tsn-audio-title{margin:0;font-family:Oswald,'Arial Narrow',sans-serif;font-weight:700;
+        font-size:.95rem;letter-spacing:.14em;text-transform:uppercase;color:#E8B842}
+      .tsn-audio-x{appearance:none;background:none;border:0;padding:0;width:32px;height:32px;
+        display:grid;place-items:center;color:#D9342B;font-family:Oswald,sans-serif;
+        font-size:1.15rem;font-weight:700;line-height:1;cursor:pointer}
+      .tsn-audio-x:focus,.tsn-audio-x:focus-visible{outline:none}
+      .tsn-audio-row{display:flex;align-items:center;justify-content:space-between;
+        gap:12px;padding:14px 16px 0}
+      .tsn-audio-label{font-family:Oswald,'Arial Narrow',sans-serif;font-weight:600;
+        font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:#F2E8CC}
+      .tsn-audio-toggle{appearance:none;box-sizing:border-box;width:64px;padding:5px 0;
+        text-align:center;background:none;border:2px solid #E8B842;color:#E8B842;
+        font-family:Oswald,'Arial Narrow',sans-serif;font-weight:600;font-size:.7rem;
+        letter-spacing:.12em;text-transform:uppercase;cursor:pointer;border-radius:0}
+      .tsn-audio-toggle.is-on{background:#E8B842;color:#0B1428}
+      .tsn-audio-toggle:focus,.tsn-audio-toggle:focus-visible{outline:none}
+      .tsn-audio-vol{flex:1 1 auto;-webkit-appearance:none;appearance:none;height:22px;
+        background:transparent;cursor:pointer;min-width:0}
+      .tsn-audio-vol::-webkit-slider-runnable-track{height:4px;background:rgba(242,232,204,.35)}
+      .tsn-audio-vol::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;
+        margin-top:-6px;background:#E8B842;border:2px solid #0B1428;border-radius:0}
+      .tsn-audio-vol::-moz-range-track{height:4px;background:rgba(242,232,204,.35)}
+      .tsn-audio-vol::-moz-range-thumb{width:12px;height:12px;background:#E8B842;
+        border:2px solid #0B1428;border-radius:0}
+      .tsn-audio-vol:focus,.tsn-audio-vol:focus-visible{outline:none}
+      .exhibit-sound-toggle.tsn-alloff{position:fixed}
+      .exhibit-sound-toggle.tsn-alloff::after{content:"";position:absolute;left:9px;right:9px;
+        top:50%;height:2px;background:#D9342B;transform:rotate(-45deg)}
+    </style>
+    <script>
+    (function () {
+      var K_VOL = 'tsn_audio_volume_v1', K_SFX = 'tsn_audio_sfx_enabled_v1', K_MUS = 'tsn_audio_music_enabled_v1';
+      function rB(k, d) { try { var v = localStorage.getItem(k); return v === null ? d : v === 'true'; } catch (e) { return d; } }
+      function rN(k, d) { try { var v = parseFloat(localStorage.getItem(k)); return isNaN(v) ? d : v; } catch (e) { return d; } }
+      function w(k, v) { try { localStorage.setItem(k, String(v)); } catch (e) {} }
+      var vol = rN(K_VOL, 0.8), sfxOn = rB(K_SFX, true), musOn = rB(K_MUS, true);
+      var pass = false, open = false;
+
+      function isMusic(el) { return el.loop || /music|thrift|8bit/i.test(el.currentSrc || el.src || ''); }
+      // music sits low under the sfx (the campaign's own mix: ~0.04 at default volume)
+      function applyTo(el) { el.volume = isMusic(el) ? 0.05 * vol : vol; el.muted = isMusic(el) ? !musOn : !sfxOn; }
+
+      // ── MUSIC (added by the site: the old build shipped without its track) ──
+      var music = document.createElement('audio');
+      music.src = './audio/thrift-shop-8bit-cover-oscar.mp3';
+      music.loop = true; music.preload = 'auto';
+      function syncMusic() {
+        applyTo(music);
+        if (musOn) { music.play().catch(function () {}); } else { music.pause(); }
+      }
+      // autoplay policy: the first tap anywhere in the game doubles as the
+      // music unlock
+      var musicArmed = false;
+      document.addEventListener('pointerdown', function () {
+        if (musicArmed) return; musicArmed = true; syncMusic();
+      }, true);
+      function applyAll() {
+        document.querySelectorAll('audio').forEach(applyTo);
+        if (musicArmed) syncMusic();
+        var b = nativeBtn();
+        if (b) b.classList.toggle('tsn-alloff', !sfxOn && !musOn);
+      }
+      document.addEventListener('play', function (e) {
+        if (e.target && e.target.tagName === 'AUDIO') applyTo(e.target);
+      }, true);
+
+      function nativeBtn() { return document.querySelector('.exhibit-sound-toggle'); }
+      function nativeMuted(b) { return !!(b && b.querySelector('path[d^="M16 9.5"]')); }
+      function unlock() { // the game only plays sounds after its own enable ran
+        var b = nativeBtn();
+        if (b && nativeMuted(b)) { pass = true; b.dispatchEvent(new MouseEvent('click', { bubbles: true })); pass = false; }
+      }
+
+      var ui = null;
+      function build() {
+        var bd = document.createElement('div'); bd.className = 'tsn-audio-backdrop';
+        var p = document.createElement('div'); p.className = 'tsn-audio-panel';
+        p.setAttribute('role', 'dialog'); p.setAttribute('aria-modal', 'true');
+        p.innerHTML =
+          '<div class="tsn-audio-head"><h2 class="tsn-audio-title">Audio</h2>' +
+          '<button type="button" class="tsn-audio-x" aria-label="Close">\u2715</button></div>' +
+          '<div class="tsn-audio-row"><span class="tsn-audio-label">Volume</span>' +
+          '<input class="tsn-audio-vol" type="range" min="0" max="100" step="1" aria-label="Volume"></div>' +
+          '<div class="tsn-audio-row"><span class="tsn-audio-label">Sound Effects</span>' +
+          '<button type="button" class="tsn-audio-toggle" data-k="sfx"></button></div>' +
+          '<div class="tsn-audio-row"><span class="tsn-audio-label">Music</span>' +
+          '<button type="button" class="tsn-audio-toggle" data-k="mus"></button></div>';
+        bd.addEventListener('click', close);
+        p.querySelector('.tsn-audio-x').addEventListener('click', close);
+        var slider = p.querySelector('.tsn-audio-vol');
+        slider.value = Math.round(vol * 100);
+        slider.addEventListener('input', function () {
+          vol = slider.value / 100; w(K_VOL, vol); unlock(); applyAll();
+        });
+        p.querySelectorAll('.tsn-audio-toggle').forEach(function (t) {
+          t.addEventListener('click', function () {
+            if (t.dataset.k === 'sfx') { sfxOn = !sfxOn; w(K_SFX, sfxOn); }
+            else { musOn = !musOn; w(K_MUS, musOn); }
+            if (sfxOn || musOn) unlock();
+            paint(); applyAll();
+          });
+        });
+        document.body.appendChild(bd); document.body.appendChild(p);
+        ui = { bd: bd, p: p };
+      }
+      function paint() {
+        if (!ui) return;
+        ui.p.querySelectorAll('.tsn-audio-toggle').forEach(function (t) {
+          var on = t.dataset.k === 'sfx' ? sfxOn : musOn;
+          t.classList.toggle('is-on', on); t.textContent = on ? 'On' : 'Off';
+        });
+      }
+      function show() { if (!ui) build(); paint(); ui.bd.style.display = ui.p.style.display = ''; open = true; }
+      function close() { if (ui) { ui.bd.style.display = ui.p.style.display = 'none'; } open = false; }
+      document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && open) close(); });
+
+      // the speaker icon opens THIS window (capture: beats the bundle's toggle)
+      document.addEventListener('click', function (e) {
+        if (pass) return;
+        var b = e.target && e.target.closest && e.target.closest('.exhibit-sound-toggle');
+        if (!b) return;
+        e.preventDefault(); e.stopPropagation();
+        unlock(); // first tap doubles as the audio unlock gesture
+        show();
+      }, true);
+
+      applyAll();
+    })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+  </body>
+</html>

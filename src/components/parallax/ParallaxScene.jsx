@@ -40,17 +40,15 @@ const COMMIT_RUNS = [
   ],
   [
     seg(0.955, 1.3), // buildings continue front-first with c3
-    seg(1.3, 1.42), // c4 rides high; TSN crests the horizon
-    // NO PARK HERE — c4 scrolling off, TSN scrolling on, and the second
-    // needle revealing itself are ONE continuous moment [1.42–1.56]
-    seg(1.42, 1.56), // the split fires during the copy handoff
+    seg(1.3, 1.78), // NO PARK: as c4 rides off, the needle slides out [1.47–1.74]
+    // and TSN crests mid-slide (≈1.53) — needle and copy land together ≈1.74
   ],
   [
-    seg(1.565, 2.1), // park lands on the completed split; then viewpoint rises, layers lock + illuminate
-    seg(2.1, 2.5), // iconic + times two ride off; the campaign lockup MATERIALIZES as the scroll completes — the end
+    seg(1.785, 2.4), // park on the completed split; then viewpoint rises, layers lock + illuminate
+    seg(2.4, 2.95), // iconic + times two ride FULLY off; then the campaign lockup MATERIALIZES as the scroll completes — the end
   ],
 ];
-const MAX_PROGRESS = 2.5;
+const MAX_PROGRESS = 2.95;
 
 // ── NARRATION CRAWL ────────────────────────────────────────────────────────
 // ALL copy rides ONE column at CONSTANT speed (CRAWL_KF is a single linear
@@ -59,7 +57,7 @@ const MAX_PROGRESS = 2.5;
 // column rises from behind the treeline (z 300: behind every moving layer,
 // in front of the sky plates), each block dissipates in the mask band near
 // the frame top. The campaign lockup does NOT ride the crawl: it
-// MATERIALIZES at its resting position (blur+scale glimmer-in, 2.38→2.48)
+// MATERIALIZES at its resting position (blur+scale glimmer-in, 2.82→2.92)
 // as "times two" rides off, landing just as the scroll completes at
 // MAX_PROGRESS. The site rests on it — no cycling, no swaps.
 //   `at` = block offset down the column, in cqh (% of frame height).
@@ -72,34 +70,34 @@ const CRAWL_LINES = [
   { key: 'c1', lines: ['The Space Needle', 'offers unparalleled', 'views of the', 'Seattle Skyline', '...'], fit: true, at: 0 }, // rows 40–54 at p=0; exits ≈0.33 as c2 enters
   { key: 'c2', text: 'But with one glaring design flaw', dots: true, at: 62 },   // enters ≈0.33 (needle placed); transits with the TREELINES [0.35–0.78]
   { key: 'c3', text: 'From the top of the Space Needle, you can’t see the Space Needle itself.', at: 109 }, // emerges ≈0.72 (c2 high in the sky) behind the still-moving treeline; centre ≈1.02
-  { key: 'c4', lines: ['That is why', 'we propose', '...'], at: 145 },      // EARLIER: enters ≈1.02, fully off the top ≈1.5 — the sky is empty before the split at 1.567, so the second needle's arrival owns its moment
-  { key: 'c5', lines: ['TWO', 'SPACE', 'NEEDLES'], at: 168, tsn: true }, // crests ≈1.21, into the readable band ≈1.28 — riding well below c4, prominent before and through the split [1.42–1.56]
+  { key: 'c4', lines: ['That is why', 'we propose', '...'], at: 145 },      // enters ≈1.02, rides high while TSN crests below
+  { key: 'c5', lines: ['TWO', 'SPACE', 'NEEDLES'], at: 207.4, tsn: true }, // shifted with the needle (Δ−0.08, sync preserved): crests ≈1.53 mid-slide, copy and needle arrive at the balanced point TOGETHER ≈1.74
   // ENDING (2026-07, v2 — no face switching):
   //   c6 "AN / ICONIC / VIEW / ..." rides the crawl like any statement.
   //   c7 "TIMES / TWO" sits beneath it but MATERIALIZES in place (fadeIn
   //      window) mid-sky, then both ride up and off together.
   //   The campaign lockup NO LONGER rides the crawl — it MATERIALIZES in
   //      place (see the parallax-lockup element) as "times two" scrolls off.
-  { key: 'c6', lines: ['An', 'Iconic', 'View'], at: 220, iconic: true }, // MUCH earlier: enters ≈1.64, mid-split, chasing TSN up the sky
-  // c7 sits DIRECTLY beneath c6 (at 235 = c6's offset + its 3-row height) so
+  { key: 'c6', lines: ['An', 'Iconic', 'View'], at: 280, iconic: true }, // enters ≈2.14, once TSN is riding off — no crowding of the split
+  // c7 sits DIRECTLY beneath c6 (at 295 = c6's offset + its 3-row height) so
   // the pair reads as ONE statement, in THREE distinct phases: c6 fully
-  // assembled and ALONE 1.84→1.92 · "TIMES TWO" materializes 1.92→2.0 ·
-  // the completed "AN ICONIC VIEW TIMES TWO" holds intact until ≈2.09 (over
-  // the illumination), then rides off together — c7 clears the frame ≈2.38,
-  // as the campaign lockup materializes in its place.
-  { key: 'c7', lines: ['times', 'two'], at: 235, iconic: true, fadeIn: [1.92, 2.0] },
+  // assembled and ALONE 2.34→2.46 · "TIMES TWO" materializes 2.46→2.54 ·
+  // the completed "AN ICONIC VIEW TIMES TWO" holds intact until ≈2.59 (over
+  // the illumination), then rides off together — c7 enters the top band
+  // ≈2.72 and is fully gone ≈2.8 — THEN the lockup materializes (2.82).
+  { key: 'c7', lines: ['times', 'two'], at: 295, iconic: true, fadeIn: [2.46, 2.54] },
 ];
 // Column-top keyframes (% of frame height) — ONE linear span = constant
 // crawl speed (120% of frame height per 1.0 progress). kfPos clamps at the
 // ends, so the finale block freezes in place at MAX_PROGRESS.
 const CRAWL_KF = [
   [0, 40],
-  [2.5, -260],
+  [2.95, -314],
 ];
 
 // Progress values where the experience RESTS waiting for a scroll to start the
 // next stage. The "Scroll" cue shows whenever the playhead is parked near one.
-const HINT_POINTS = [0, 0.95, 1.56];
+const HINT_POINTS = [0, 0.95, 1.78];
 
 // Logo lockup (black-on-transparent) used as a gold MASK so it matches the
 // mustard ink exactly. No-stars version — the sky already has the starfield.
@@ -119,22 +117,120 @@ const CARD_BASE = `${import.meta.env.BASE_URL || '/'}parallax/`;
 // its landmark), where the content field begins below the illustration, and the
 // insert(s) whose copy lives on it.
 const CARD_MAP = {
-  '2ii': { src: `${CARD_BASE}A2A4A5_fullcard.webp`,   startY: 63.6, contentTop: 40, section: 'About',        inserts: ['oversight'] },              // science pavilion
-  '3':   { src: `${CARD_BASE}A3A5_fullcard.webp`,     startY: 68.5, contentTop: 28, section: 'The Proposal', inserts: ['proposal'] },              // monorail
-  '7':   { src: `${CARD_BASE}A7A11_fullcard.webp`,    startY: 43.3, contentTop: 32, section: 'FAQ',          inserts: ['faq'] },                   // balloons
-  '8':   { src: `${CARD_BASE}A8A9_fullcard.webp`,     startY: 42.7, contentTop: 42, section: 'The Vision',   inserts: ['vision'] },                // golden arches
-  '10':  { src: `${CARD_BASE}A9A10A11_fullcard.webp`, startY: 44.1, contentTop: 40, section: 'Get Involved', inserts: ['movement', 'merch', 'donate-land'] }, // arena
+  // FIVE PAGES (restructured 2026-07): About (blind spot + proposal + vision,
+  // merged from the petition) · FAQ · Merch · Game · Get Involved.
+  // Entry ORDER = the expanded menu's link order. startY stays with its
+  // landmark (tuned live — do not touch). contentTop values (2026-07) are
+  // MEASURED from each card's art: the illustration's bottom edge + ~3%,
+  // so copy always sits just below the top image.
+  '2ii': { src: `${CARD_BASE}A2A4A5_fullcard.webp`,   startY: 63.6, contentTop: 22, menuSolid: true, credits: true, section: 'About',        inserts: ['about-lead', 'about-blindspot', 'about-proposal', 'about-vision'] }, // science pavilion
+  '7':   { src: `${CARD_BASE}A7A11_fullcard.webp`,    startY: 43.3, restPx: 50, contentTop: 19, ctaRight: true, section: 'FAQ',          inserts: ['faq'], headRight: true },  // balloons — eyebrow+heading right-justified to balance the upper-left illustration
+  '8':   { src: `${CARD_BASE}A8A9_fullcard.webp`,     startY: 42.7, restPx: 90, contentTop: 11, section: 'Merch',        inserts: ['merch'], ctaRight: true },                 // golden arches
+  '3':   { src: `${CARD_BASE}A3A5_fullcard.webp`,     startY: 68.5, restPx: 70, contentTop: 17.5, section: 'Civic Expansion Simulator', inserts: ['game'] },   // monorail
+  '10':  { src: `${CARD_BASE}A9A10A11_fullcard.webp`, startY: 44.1, restPx: 60, contentTop: 24, ctaRight: true, section: 'Get Involved', inserts: ['getinvolved-lead', 'movement', 'donate-land', 'subscribe'] }, // arena
 };
 
+// Expanded-menu links, top to bottom (user-specified order).
+const MENU_LINKS = [
+  { label: 'About', layer: '2ii' },
+  { label: 'Simulator', layer: '3' },
+  { label: 'Get Involved', layer: '10' },
+  { label: 'Merch', layer: '8' },
+  { label: 'FAQ', layer: '7' },
+];
+
+// URL state: every page (card) has a hash slug, and the running game overlay
+// is #play — refreshing any of these boots straight back into that page over
+// the finished scene instead of restarting the splash.
+const CARD_SLUGS = { '2ii': 'about', '7': 'faq', '8': 'merch', '3': 'game', '10': 'get-involved' };
+const SLUG_TO_LAYER = Object.fromEntries(Object.entries(CARD_SLUGS).map(([k, v]) => [v, k]));
+
 /** Renders one insert's copy on a card body (title, tagline, body, list, faq, cta). */
-function CardSection({ insert }) {
+// CLICK MECHANIC for card CTAs: hold the pressed pose (down + red) for a
+// beat so the press reads, THEN fire the action.
+function pressFire(e, fn) {
+  const el = e.currentTarget;
+  el.classList.add('is-pressed');
+  setTimeout(() => { el.classList.remove('is-pressed'); fn(); }, 200);
+}
+
+// minimal inline emphasis for insert copy: *text* → <em>text</em>
+const renderEm = (t) =>
+  t.split(/\*([^*]+)\*/g).map((seg, i) => (i % 2 ? <em key={i}>{seg}</em> : seg));
+
+// native Kit subscribe: posts to the campaign's Kit form (9687388) with the
+// site's own field + push-button — no Kit script, no Kit styling
+const KIT_FORM_ACTION = 'https://app.kit.com/forms/9687388/subscriptions';
+function KitSubscribe() {
+  const [state, setState] = useState('idle'); // idle | busy | done | error
+  const onSubmit = (e) => {
+    e.preventDefault();
+    const data = new FormData(e.currentTarget);
+    setState('busy');
+    fetch(KIT_FORM_ACTION, { method: 'POST', body: data, headers: { Accept: 'application/json' } })
+      .then((r) => r.json())
+      .then((j) => setState(j && (j.status === 'success' || j.status === 'quarantined') ? 'done' : 'error'))
+      .catch(() => setState('error'));
+  };
+  if (state === 'done') {
+    return <p className="card-section-body kit-success">Success! Now check your email to confirm your subscription.</p>;
+  }
+  return (
+    <form className="kit-subscribe" onSubmit={onSubmit}>
+      <input
+        className="kit-input"
+        type="email"
+        name="email_address"
+        placeholder="Email address"
+        aria-label="Email address"
+        required
+      />
+      <button type="submit" className="card-section-cta kit-submit" disabled={state === 'busy'}>
+        {state === 'busy' ? 'One sec…' : 'Subscribe'}
+      </button>
+      {state === 'error' && <p className="kit-error">That didn’t go through. Try again?</p>}
+    </form>
+  );
+}
+
+// discreet expandable credits at the foot of a card (About)
+function CardCredits() {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="card-credits">
+      <button type="button" className="card-credits-btn" onClick={() => setOpen((o) => !o)}>
+        Credits
+      </button>
+      {open && (
+        <div className="card-credits-body">
+          <a href="https://www.extragood.studio/" target="_blank" rel="noreferrer" aria-label="Extra Good Studio">
+            <img className="card-credits-logo" src="/logo/eg-logo-mustard.png" alt="Extra Good!" draggable="false" />
+          </a>
+          <p>
+            The Campaign for Two Space Needles is an{' '}
+            <a href="https://www.extragood.studio/" target="_blank" rel="noreferrer">{'Extra\u00A0Good\u00A0Studio'}</a>{' '}
+            production.
+          </p>
+          <p>
+            Two Space Needles is in no way related to the original Space Needle, the Space Needle
+            Corporation, or the Wright family.
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function CardSection({ insert, onPlayGame }) {
   if (!insert) return null;
   return (
-    <section className="card-section" data-accent={insert.accent}>
-      <h3 className="card-section-title">{insert.title}</h3>
+    <section className={`card-section${insert.lead ? ' is-lead' : ''}`} data-accent={insert.accent}>
+      <h3 className="card-section-title">
+        {insert.titleLines ? insert.titleLines.map((l, i) => <span key={i} className="card-section-titleline">{l}</span>) : insert.title}
+      </h3>
       {insert.tagline && <p className="card-section-tagline">{insert.tagline}</p>}
       <div className="card-section-rule" aria-hidden="true" />
-      {insert.body && insert.body.map((p, i) => <p key={i} className="card-section-body">{p}</p>)}
+      {insert.body && insert.body.map((p, i) => <p key={i} className="card-section-body">{renderEm(p)}</p>)}
       {insert.list && (
         <ol className="card-section-list">
           {insert.list.map((it, i) => (
@@ -149,8 +245,39 @@ function CardSection({ insert }) {
           ))}
         </dl>
       )}
-      {insert.cta && (
-        <a className="card-section-cta" href={insert.cta.href} target="_blank" rel="noreferrer">{insert.cta.label}</a>
+      {insert.cta && !insert.cta.game && (
+        <a
+          className="card-section-cta"
+          href={insert.cta.href}
+          target="_blank"
+          rel="noreferrer"
+          onClick={(e) => {
+            e.preventDefault();
+            const href = insert.cta.href;
+            pressFire(e, () => {
+              if (href.startsWith('mailto:')) window.location.href = href;
+              else window.open(href, '_blank', 'noopener');
+            });
+          }}
+        >{insert.cta.label}</a>
+      )}
+      {insert.image && <img className="card-section-image card-section-image--below" src={insert.image.src} alt={insert.image.alt || ''} draggable="false" />}
+      {insert.kit && <KitSubscribe />}
+      {insert.social && (
+        <>
+          {insert.social.text && <p className="card-section-body card-section-followline">{insert.social.text}</p>}
+          <a
+            className="card-section-cta"
+            href={insert.social.href}
+            target="_blank"
+            rel="noreferrer"
+            onClick={(e) => {
+              e.preventDefault();
+              const href = insert.social.href;
+              pressFire(e, () => window.open(href, '_blank', 'noopener'));
+            }}
+          >{insert.social.label}</a>
+        </>
       )}
       {insert.secondary && <p className="card-section-secondary">{insert.secondary}</p>}
     </section>
@@ -335,6 +462,80 @@ export default function ParallaxScene({ motionGain = 1 }) {
   const [cardRaised, setCardRaised] = useState(false); // card glides up when true
   const [cardClosing, setCardClosing] = useState(false); // card fades out as it rolls back down
   const [rippling, setRippling] = useState(false); // idle attract wave across the layers
+  // MENU button: once everything is in place (deck ready), let the scene
+  // breathe for a moment, then materialize it beneath the logo. Resets on
+  // scroll-back.
+  const [menuOn, setMenuOn] = useState(false);
+  // MENU state: button + lockup dissolve, the world compresses back down to
+  // its clustered-low intro composition, and the menu expands in the freed
+  // sky as the five page links. Closes via empty-sky tap.
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [flashLink, setFlashLink] = useState(null); // brief invert-flash before a link opens its page
+  const [cardMenuOpen, setCardMenuOpen] = useState(false); // the card-foot MENU (page links)
+  const [cardSwitching, setCardSwitching] = useState(false); // card→card: scene stays parked
+  const [outgoingCard, setOutgoingCard] = useState(null); // { id, dropped } — the old card sliding off
+  // PLACE NEEDLES: the game is mounted same-origin at /game/ (public/game).
+  // It opens as a fullscreen overlay iframe — instant (same origin), and
+  // closing returns to the site exactly where the user left it.
+  // The overlay is reflected in the URL as #play: a refresh on that URL
+  // reloads the GAME (overlay reopens immediately over a fresh iframe)
+  // instead of booting the user back to the splash; back/forward work too.
+  const [gameOpen, setGameOpen] = useState(() => typeof window !== 'undefined' && window.location.hash === '#play');
+  // PUSH CHOREOGRAPHY (one coupled motion, beats per direction):
+  //   0) the card holds its place · 1) the game slides in from stage-right ·
+  //   2) its left edge CONTACTS the card's right edge (the frame edge) ·
+  //   3) from contact on, game and card move in rigid sync — the game
+  //      pushes the card · 4) the card exits fully as the game locks
+  //      full-frame. Closing runs the same motion in reverse.
+  // A single eased scalar (gamePush 0→1) drives BOTH transforms per frame —
+  // CSS transitions can't couple two elements around a geometry-dependent
+  // contact point, so this is rAF-driven.
+  const [gamePush, setGamePush] = useState(() => (typeof window !== 'undefined' && window.location.hash === '#play' ? 1 : 0));
+  const pushGeom = useRef({ W: 0, F: 0 }); // viewport width, frame width (measured at animation start)
+  const pushRaf = useRef(0);
+  const gameOpenRef = useRef(false);
+  gameOpenRef.current = gameOpen;
+  const easeInOutCubic = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
+  const animatePush = useCallback((from, to, ms, done) => {
+    cancelAnimationFrame(pushRaf.current);
+    const start = performance.now();
+    const tick = (now) => {
+      const t = Math.min(1, (now - start) / ms);
+      setGamePush(from + (to - from) * easeInOutCubic(t));
+      if (t < 1) pushRaf.current = requestAnimationFrame(tick);
+      else if (done) done();
+    };
+    pushRaf.current = requestAnimationFrame(tick);
+  }, []);
+  useEffect(() => () => cancelAnimationFrame(pushRaf.current), []);
+  const rawOpenGame = useCallback(() => {
+    if (gameOpenRef.current) return;
+    setGameOpen(true);
+    requestAnimationFrame(() => {
+      pushGeom.current = {
+        W: window.innerWidth,
+        F: frameRef.current ? frameRef.current.getBoundingClientRect().width : window.innerWidth,
+      };
+      animatePush(0, 1, 950);
+    });
+  }, [animatePush]);
+  const rawCloseGame = useCallback(() => {
+    if (!gameOpenRef.current) return;
+    animatePush(1, 0, 950, () => setGameOpen(false));
+  }, [animatePush]);
+  const openGame = useCallback(() => {
+    rawOpenGame();
+    if (window.location.hash !== '#play') window.history.pushState(null, '', '#play');
+  }, [rawOpenGame]);
+  const closeGame = useCallback(() => {
+    rawCloseGame();
+    // X = HOME (2026-07): drop the underlying game card instantly — it's
+    // hidden behind the overlay — so the push-back reveals the resting
+    // homescreen (lockup + MENU), not the card. Menu chrome resets closed.
+    setOpenLayer(null); setCardRaised(false); setCardClosing(false);
+    setMenuOpen(false);
+    if (window.location.hash) window.history.pushState(null, '', window.location.pathname + window.location.search);
+  }, [rawCloseGame]);
   const deckReady = deckReadyState && activeCard === null;
   const zById = useMemo(() => Object.fromEntries(MOVING_LAYERS.map((l) => [l.id, l.z])), []);
 
@@ -407,10 +608,10 @@ export default function ParallaxScene({ motionGain = 1 }) {
       excl: GLIMMER_EXCLUDE.has(l.id) || !!l.decor,
     })), []);
   // glints ramp in as the scene finishes illuminating, then persist
-  const glimmerIntensity = activeCard || (openLayer && cardRaised) ? 0 : clamp01((progress - 2.0) / 0.1);
+  const glimmerIntensity = activeCard || (openLayer && cardRaised) ? 0 : clamp01((progress - 2.3) / 0.1);
   // copy + logo fade out as a card raises, and fade back in as it closes (kept
   // mounted so they blend rather than pop). Transitions only at the deck.
-  const chromeOpacity = openLayer && cardRaised ? 0 : 1;
+  const chromeOpacity = (openLayer && cardRaised) || cardSwitching ? 0 : 1;
   const chromeTransition = deckOn ? 'opacity 0.55s ease' : undefined;
 
   // ── Alpha maps for pixel-accurate hover ────────────────────────────────
@@ -469,14 +670,22 @@ export default function ParallaxScene({ motionGain = 1 }) {
     return null;
   }, []);
 
+
   // clear deck selection when we leave the deck state
   useEffect(() => { if (!deckOn) { setHovered(null); setActive(null); } }, [deckOn]);
+
+  // a beat after the lockup lands, the MENU button appears
+  useEffect(() => {
+    if (!deckReadyState) { setMenuOn(false); setMenuOpen(false); return; }
+    const t = setTimeout(() => setMenuOn(true), 450);
+    return () => clearTimeout(t);
+  }, [deckReadyState]);
 
   // Idle ATTRACT ripple — once the scene is assembled, a wave rolls across the
   // layers (first at 5s, then every 15s) to hint that they're interactive. It's
   // skipped whenever the user is engaging the deck.
   const interactingRef = useRef(false);
-  interactingRef.current = !!(hovered || active || openLayer);
+  interactingRef.current = !!(hovered || active || openLayer || menuOpen);
   useEffect(() => {
     if (!deckOn) return;
     let interval;
@@ -493,17 +702,73 @@ export default function ParallaxScene({ motionGain = 1 }) {
 
   // open a menu layer's card: mount it aligned to the landmark, then (next
   // frame) raise it so it glides up to fill the screen.
-  const openCardFor = useCallback((id) => {
+  const rawOpenCard = useCallback((id) => {
     setHovered(null); setActive(null); setCardClosing(false);
     setOpenLayer(id); setCardRaised(false);
     requestAnimationFrame(() => requestAnimationFrame(() => setCardRaised(true)));
   }, []);
-  const closeMenuCard = useCallback(() => {
+  const openCardFor = useCallback((id) => {
+    rawOpenCard(id);
+    const slug = CARD_SLUGS[id];
+    if (slug && window.location.hash !== `#${slug}`) window.history.pushState(null, '', `#${slug}`);
+  }, [rawOpenCard]);
+  const rawCloseCard = useCallback(() => {
     setCardRaised(false);
     setCardClosing(true); // fade the card out as it rolls down, so it vanishes as the layer returns
     // wait out the staggered ripple (max delay ~0.46s + 0.8s transition) before
     // tearing down, so card-mode isn't removed mid-wave
     setTimeout(() => { setOpenLayer(null); setCardClosing(false); }, 1350);
+  }, []);
+  // card→card navigation (dropdown): BOTH cards are on screen for the whole
+  // transition — the old card SLIDES fully off the bottom (no fade, no early
+  // unmount) while the new card rises beneath it, so the background is never
+  // exposed. cardSwitching keeps the scene parked in card mode throughout.
+  const switchCardTo = useCallback((id) => {
+    const from = openLayerRef.current;
+    setCardSwitching(true);
+    setOutgoingCard({ id: from, dropped: false });
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      setOutgoingCard((o) => (o ? { ...o, dropped: true } : o));
+    }));
+    rawOpenCard(id); // the new card mounts at its landmark and rises NOW
+    const slug = CARD_SLUGS[id];
+    if (slug && window.location.hash !== `#${slug}`) window.history.pushState(null, '', `#${slug}`);
+    setTimeout(() => { setOutgoingCard(null); setCardSwitching(false); }, 1500);
+  }, [rawOpenCard]);
+
+  // the card-foot menu never carries over between pages
+  useEffect(() => { setCardMenuOpen(false); }, [openLayer]);
+
+  const closeMenuCard = useCallback(() => {
+    rawCloseCard();
+    if (SLUG_TO_LAYER[window.location.hash.slice(1)]) window.history.pushState(null, '', window.location.pathname + window.location.search);
+  }, [rawCloseCard]);
+
+  // back/forward sync for the overlay AND the pages
+  const openLayerRef = useRef(null);
+  openLayerRef.current = openLayer;
+  useEffect(() => {
+    const onPop = () => {
+      const h = window.location.hash;
+      if (h === '#play') rawOpenGame(); else rawCloseGame();
+      const layer = SLUG_TO_LAYER[h.slice(1)];
+      if (layer && openLayerRef.current !== layer) rawOpenCard(layer);
+      else if (!layer && openLayerRef.current) rawCloseCard();
+    };
+    window.addEventListener('popstate', onPop);
+    return () => window.removeEventListener('popstate', onPop);
+  }, [rawOpenCard, rawCloseCard, rawOpenGame, rawCloseGame]);
+
+  // booted straight into a page or the game (#about/#faq/…/#play refresh or
+  // deep-link)? Fast-forward the scene to the deck and open that page, so a
+  // refresh refreshes the PAGE — never the whole splash.
+  useEffect(() => {
+    const h = window.location.hash;
+    const layer = SLUG_TO_LAYER[h.slice(1)];
+    if (h === '#play' || layer) parallax.goTo(MAX_PROGRESS);
+    // (#play refresh lands directly in the game — gamePush initialises to 1)
+    if (layer) rawOpenCard(layer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const onDeckPointerMove = useCallback((e) => {
@@ -521,8 +786,9 @@ export default function ParallaxScene({ motionGain = 1 }) {
     if (openLayer) return; // a card is open — the ✕ button closes it; card body is for content
     const id = deckHitTest(e.clientX, e.clientY);
     if (id && CARD_MAP[id]) { openCardFor(id); return; } // menu layer → open its card
+    if (menuOpen && id == null) { setMenuOpen(false); return; } // empty sky closes the fanned menu
     setActive((cur) => (id == null ? null : cur === id ? null : id));
-  }, [deckOn, openLayer, deckHitTest, openCardFor]);
+  }, [deckOn, openLayer, menuOpen, deckHitTest, openCardFor]);
 
   const onDeckPointerLeave = useCallback(() => setHovered(null), []);
 
@@ -671,13 +937,13 @@ export default function ParallaxScene({ motionGain = 1 }) {
           {/* ── CAMPAIGN LOCKUP — the ending. Fixed at its resting spot
               (text row 4, logo beneath, right edge on the copy column's
               margin); MATERIALIZES powerfully (blur + scale glimmer-in) at
-              2.38→2.48, just as "times two" rides off and the scroll
+              2.82→2.92, just as "times two" rides off and the scroll
               completes. Progress-driven, so it dissolves on scroll-back. */}
           {(() => {
-            const t = smoothstep(clamp01((progress - 2.38) / 0.1));
+            const t = smoothstep(clamp01((progress - 2.82) / 0.1));
             if (t <= 0.001) return null;
             return (
-              <div className="parallax-lockup" style={{ zIndex: 300, opacity: t * chromeOpacity, transition: chromeTransition }}>
+              <div className="parallax-lockup" style={{ zIndex: 300, opacity: t * chromeOpacity * (menuOpen ? 0 : 1), transition: chromeTransition }}>
                 <div
                   className="parallax-lockup-inner"
                   style={{ filter: `blur(${((1 - t) * 8).toFixed(2)}px)`, transform: `scale(${(0.94 + 0.06 * t).toFixed(3)})` }}
@@ -694,6 +960,70 @@ export default function ParallaxScene({ motionGain = 1 }) {
               </div>
             );
           })()}
+
+          {/* ── MENU button — materializes beneath the locked lockup after a
+              1.5s breath at the deck. High z (above the layers) so it's
+              clickable; hidden while a card is open. Click destination TBD. */}
+          {deckReadyState && (
+            <div
+              className="parallax-menubtn-wrap"
+              style={{ opacity: chromeOpacity, transition: chromeTransition, pointerEvents: openLayer ? 'none' : undefined }}
+            >
+              <button
+                type="button"
+                className={`parallax-menubtn${menuOn && !menuOpen ? ' is-on' : ''}`}
+                style={{ pointerEvents: menuOpen || openLayer ? 'none' : undefined }}
+                onPointerDown={(e) => e.stopPropagation()}
+                onClick={(e) => { e.stopPropagation(); setMenuOpen(true); }}
+              >
+                Menu
+              </button>
+              {/* ✕ — materializes in EXACTLY the MENU button's slot (same box,
+                  same anchor): a natural open/close position */}
+              <button
+                type="button"
+                className={`parallax-menubtn parallax-menubtn--close${menuOpen ? ' is-on' : ''}`}
+                style={{ pointerEvents: menuOpen && !openLayer ? undefined : 'none' }}
+                aria-label="Close menu"
+                onPointerDown={(e) => e.stopPropagation()}
+                onClick={(e) => { e.stopPropagation(); setMenuOpen(false); }}
+              >
+                ✕
+              </button>
+              {/* the EXPANDED MENU — the button grows into the page links,
+                  staggered in, in the sky freed by the compression */}
+              <nav className={`parallax-menupanel${menuOpen ? ' is-on' : ''}`} aria-hidden={!menuOpen}>
+                {MENU_LINKS.map(({ label, layer }, i) => (
+                  <button
+                    key={label}
+                    type="button"
+                    className={`parallax-menulink${flashLink === label ? ' is-flash' : ''}`}
+                    // per-PROPERTY delays: the entrance stagger applies only to
+                    // opacity/filter/transform — background-color and color get
+                    // 0s so the hover invert is IMMEDIATE (a single delay value
+                    // was silently postponing the hover on lower cells)
+                    style={{
+                      transitionDelay: menuOpen
+                        ? `${(i * 0.07).toFixed(2)}s, ${(i * 0.07).toFixed(2)}s, ${(i * 0.07).toFixed(2)}s, 0s, 0s`
+                        : '0s',
+                      pointerEvents: menuOpen && !openLayer ? undefined : 'none',
+                    }}
+                    onPointerDown={(e) => e.stopPropagation()}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      // brief invert flash (like the MENU button), then open
+                      setFlashLink(label);
+                      setTimeout(() => { setFlashLink(null); openCardFor(layer); }, 160);
+                    }}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </nav>
+
+
+            </div>
+          )}
 
           {/* ── Whole-comp preview fallback (until real layers exist) ── */}
           {usePreview && (
@@ -767,11 +1097,30 @@ export default function ParallaxScene({ motionGain = 1 }) {
                 const liftId = layer.deckParent || layer.id; // elevators lift with their needle
                 if (active === liftId) deckLift = -8;
                 else if (hovered === liftId) deckLift = -3;
+                // COMPANION lift: treeline 11 fronts the BACK needle (12) — it
+                // rises a touch with it so the needle's bottom edge stays
+                // tucked behind the trees instead of floating in space
+                if (layer.id === '11') {
+                  if (active === '12') deckLift += -5;
+                  else if (hovered === '12') deckLift += -2;
+                }
+              }
+              // MENU state: the whole world COMPRESSES back down to the
+              // clustered-low composition from the intro (the scene as it
+              // first assembled), clearing the sky for the expanded menu.
+              // Derived from each layer's OWN keyframes — its value just
+              // before the finale lift (2.05) minus its final rest — so no
+              // new hand-tuned numbers are introduced. Elevators follow
+              // their own kf the same way; the needles stay put (both remain
+              // visible — only the y compression is reapplied, not the
+              // pre-split composition).
+              if (deckOn && menuOpen) {
+                deckLift += kfPos(layer.kf, 2.05, layer.linear) - kfPos(layer.kf, MAX_PROGRESS, layer.linear);
               }
               // card open: EVERY moving layer drops fully off-screen (only the
               // background plates stay). On close they all scroll back up together
               // as the card rolls down.
-              if (openLayer && cardRaised) deckLift += 120;
+              if ((openLayer && cardRaised) || cardSwitching) deckLift += 120;
               const sc = baseScale !== 1 ? ` scale(${baseScale.toFixed(3)})` : '';
               transform = `translate(${tx}%, ${ty + off + deckLift}%)${sc}`;
               // origin only matters when a layer is scaled; defaults to bottom-centre
@@ -945,22 +1294,120 @@ export default function ParallaxScene({ motionGain = 1 }) {
               replaces (covers it + everything behind); front layers stay ahead. */}
           {openLayer && CARD_MAP[openLayer] && (
             <div
+              key={openLayer}
               className="parallax-card"
+              onPointerDown={() => { if (cardMenuOpen) setCardMenuOpen(false); }}
               style={{
                 zIndex: (zById[openLayer] || 0) + 5,
-                transform: `translateY(${cardRaised ? 0 : CARD_MAP[openLayer].startY}%)`,
+                // PUSH follow: 0 until the game's left edge reaches the frame's
+                // right edge, then rigidly coupled to the game's motion
+                transform: (() => {
+                  let pushPct = 0;
+                  if (gamePush > 0 && pushGeom.current.W) {
+                    const { W, F } = pushGeom.current;
+                    const px = Math.min(0, W * (1 - gamePush) - (W + F) / 2);
+                    pushPct = (px / F) * 100;
+                  }
+                  return `translate(${pushPct.toFixed(3)}%, ${cardRaised ? `${CARD_MAP[openLayer].restPx || 0}px` : cardSwitching ? '120%' : `${CARD_MAP[openLayer].startY}%`})`;
+                })(),
+                transition: gameOpen ? 'opacity 0.6s ease' : cardSwitching ? 'transform 1.4s cubic-bezier(0.45, 0.05, 0.3, 1), opacity 0.6s ease' : undefined, // switch = slow matched glide; game push = per-frame
                 opacity: cardClosing ? 0 : 1, // fades out on the roll-down so it vanishes as its layer arrives
               }}
             >
               <img src={CARD_MAP[openLayer].src} alt="" draggable="false" />
               <div
-                className="parallax-card-content"
+                className={`parallax-card-content${CARD_MAP[openLayer].headRight ? ' head-right' : ''}${CARD_MAP[openLayer].ctaRight ? ' cta-right' : ''}`}
                 style={{ top: `${CARD_MAP[openLayer].contentTop}%`, opacity: cardRaised && !cardClosing ? 1 : 0 }}
               >
                 <h2 className="card-section-heading">{CARD_MAP[openLayer].section}</h2>
-                {CARD_MAP[openLayer].inserts.map((id) => <CardSection key={id} insert={byId(id)} />)}
+                {CARD_MAP[openLayer].inserts.map((id) => <CardSection key={id} insert={byId(id)} onPlayGame={openGame} />)}
+                {CARD_MAP[openLayer].credits && <CardCredits />}
               </div>
-              <button className="parallax-card-close" onClick={closeMenuCard} aria-label="Close">✕</button>
+              <button
+                className="parallax-card-close"
+                // the card parks restPx below the frame — pull the ✕ back up
+                // so it sits at the bottom of the SCREEN on every page
+                style={{ bottom: `calc(clamp(0.2rem, 1.2vw, 0.6rem) + ${CARD_MAP[openLayer].restPx || 0}px)` }}
+                onClick={closeMenuCard}
+                aria-label="Close"
+              >✕</button>
+              <div className="parallax-cardmenu-wrap">
+              <div
+                className={`parallax-cardmenu${cardMenuOpen ? ' is-open' : ''}${CARD_MAP[openLayer].menuSolid ? ' menu-solid' : ''}`}
+                // the card parks restPx lower, but the MENU stays at the GLOBAL
+                // 5.5cqh line — compensate for the card's drop
+                style={{ top: `calc(5.5cqh - ${CARD_MAP[openLayer].restPx || 0}px)` }}
+                onPointerDown={(e) => e.stopPropagation()}
+              >
+                <button
+                  type="button"
+                  className={`parallax-cardmenu-btn${cardMenuOpen ? ' is-open' : ''}`}
+                  onClick={(e) => {
+                    if (!cardMenuOpen) { setCardMenuOpen(true); return; }
+                    // second click: MAIN MENU — flash, then exit to the home
+                    // screen with the main menu already open
+                    const el = e.currentTarget;
+                    el.classList.add('is-flash');
+                    setTimeout(() => {
+                      el.classList.remove('is-flash');
+                      setCardMenuOpen(false);
+                      setMenuOpen(true);
+                      closeMenuCard();
+                    }, 160);
+                  }}
+                >
+                  {cardMenuOpen ? 'Main Menu' : 'Menu'}
+                </button>
+                <nav className={`parallax-cardmenu-panel${cardMenuOpen ? ' is-on' : ''}`} aria-hidden={!cardMenuOpen}>
+                    {MENU_LINKS.filter((l) => l.layer !== openLayer).map(({ label, layer }) => (
+                      <button
+                        key={label}
+                        type="button"
+                        className="parallax-cardmenu-link"
+                        onClick={(e) => {
+                          const el = e.currentTarget;
+                          el.classList.add('is-flash');
+                          setTimeout(() => {
+                            el.classList.remove('is-flash');
+                            setCardMenuOpen(false);
+                            switchCardTo(layer);
+                          }, 160);
+                        }}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                </nav>
+              </div>
+              </div>
+              {openLayer === '3' && (
+                <button type="button" className="card-section-cta parallax-card-playfixed" onClick={(e) => pressFire(e, openGame)}>Simulate.</button>
+              )}
+            </div>
+          )}
+
+          {/* OUTGOING card (card→card switch): rides ABOVE the incoming card
+              and slides fully off the bottom — no fade, so the pair always
+              covers the scene behind */}
+          {outgoingCard && outgoingCard.id && CARD_MAP[outgoingCard.id] && (
+            <div
+              className="parallax-card"
+              style={{
+                zIndex: Math.max(zById[outgoingCard.id] || 0, zById[openLayer] || 0) + 6,
+                transform: outgoingCard.dropped
+                  ? 'translate(0%, 130%)'
+                  : `translate(0%, ${CARD_MAP[outgoingCard.id].restPx || 0}px)`,
+                transition: 'transform 1.4s cubic-bezier(0.45, 0.05, 0.3, 1)',
+              }}
+            >
+              <img src={CARD_MAP[outgoingCard.id].src} alt="" draggable="false" />
+              <div
+                className={`parallax-card-content${CARD_MAP[outgoingCard.id].headRight ? ' head-right' : ''}${CARD_MAP[outgoingCard.id].ctaRight ? ' cta-right' : ''}`}
+                style={{ top: `${CARD_MAP[outgoingCard.id].contentTop}%`, opacity: 1 }}
+              >
+                <h2 className="card-section-heading">{CARD_MAP[outgoingCard.id].section}</h2>
+                {CARD_MAP[outgoingCard.id].inserts.map((id) => <CardSection key={id} insert={byId(id)} onPlayGame={openGame} />)}
+              </div>
             </div>
           )}
         </div>
@@ -979,6 +1426,26 @@ export default function ParallaxScene({ motionGain = 1 }) {
       >
         <span className="parallax-hint-arrow" aria-hidden="true" />
       </button>
+
+      {/* ── PLACE NEEDLES overlay — the game, native to the site ── */}
+      {gameOpen && (
+        <div className="parallax-gameoverlay" style={{ transform: `translateX(${((1 - gamePush) * 100).toFixed(3)}%)` }}>
+          <iframe
+            className="parallax-gameoverlay-frame"
+            src="/game/index.html"
+            title="Place Needles"
+            allow="fullscreen"
+          />
+          <button
+            type="button"
+            className="parallax-gameoverlay-close"
+            aria-label="Exit game"
+            onClick={closeGame}
+          >
+            ✕
+          </button>
+        </div>
+      )}
 
       {/* full-length campaign card expanded from a selected layer */}
       {activeCard && (
