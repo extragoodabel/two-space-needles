@@ -47,3 +47,15 @@ gmp-map-3d{filter:saturate(1.28) contrast(1.06) brightness(.95)}
 .exhibit-place-another:disabled{box-shadow:none;transform:none}
 /* disclaimer pinned to the very bottom of the credits modal */
 .exhibit-credits-modal-body:after{content:"Two Space Needles is in no way related to the original Space Needle, the Space Needle Corporation, or the Wright family.";display:block;margin-top:16px;padding-top:10px;border-top:1px solid rgba(19,36,63,.25);font-size:.68rem;font-style:italic;color:var(--fair-blue);opacity:.75}
+
+/* ── MOBILE game chrome (2026-07) ── */
+@media(max-width:600px){
+  /* 1) PLACE + ERASE share ONE row: 60/40, equal height */
+  .exhibit-buttons-section{flex-direction:row;align-items:stretch;gap:10px}
+  .exhibit-place-another{order:0;flex:0 0 60%;max-width:60%;min-width:0;height:44px}
+  .exhibit-btn-clear{order:0;flex:1 1 auto;min-width:0;height:44px;padding:0 8px}
+  /* 2) speaker rides BESIDE the site's ✕ (one top-right row) */
+  .exhibit-sound-toggle{top:12px;right:60px}
+  /* 3) Credits: a small quiet chip at the end of the instructions line */
+  .exhibit-credits-button{position:static;display:inline-block;margin-left:6px;padding:1px 7px;font-size:.62rem;vertical-align:1px}
+}
