@@ -98,7 +98,7 @@ body {
   font-weight: 300;
   text-transform: uppercase;
   color: var(--mustard, #e8b842);
-  font-size: clamp(1.54rem, 5.94cqw, 2.97rem); /* +10% (beat-1 review) */
+  font-size: min(5.94cqw, 2.97rem); /* +10% (beat-1 review); NO rem floor — it bound on phones and oversized the copy (mobile pass 2026-07) */
   letter-spacing: 0.14em;
   line-height: 1.45;
 }
@@ -106,10 +106,13 @@ body {
    8.4cqw is sized so NEEDLES (the widest row) fills the right-side column;
    tight leading so the three rows read as one monolithic block. */
 .parallax-crawl-line--tsn {
-  font-size: clamp(2.4rem, 8.4cqw, 4.4rem);
+  font-size: min(8.4cqw, 4.4rem);
   letter-spacing: 0.3em;
   line-height: 1.15;
 }
+/* follow group ("times two"): flows DIRECTLY under its parent block's lines
+   at the same line rhythm — equal spacing between every row on any screen */
+.parallax-crawl-follow { display: block; }
 /* mandated line breaks (c1): each sub-line is one unbreakable row */
 .parallax-crawl-subline {
   display: block;
@@ -124,7 +127,7 @@ body {
 /* "AN / ICONIC / VIEW" + "TIMES / TWO" — the closing tagline, sized up
    toward the hammer so it doesn't feel small after TWO SPACE NEEDLES */
 .parallax-crawl-line--iconic {
-  font-size: clamp(2rem, 7.4cqw, 3.7rem);
+  font-size: min(7.4cqw, 3.7rem);
   letter-spacing: 0.22em;
   line-height: 1.2;
 }
@@ -631,30 +634,15 @@ body {
   color: var(--vermilion-soft, #e55c50);
 }
 
-/* discreet credits at the card foot — barely-there until wanted */
-.card-credits { margin: 2.4rem 0 0.5rem; }
-.card-credits-btn {
-  appearance: none;
-  background: none;
-  border: 0;
-  padding: 0;
-  cursor: pointer;
-  font-family: var(--font-display);
-  font-size: 0.62rem;
-  font-weight: 400;
-  letter-spacing: 0.28em;
-  text-transform: uppercase;
-  color: rgba(244, 238, 224, 0.45);
-  transition: color 0.15s ease;
-}
-.card-credits-btn:hover { color: var(--mustard, #e8b842); }
-.card-credits-btn:focus,
-.card-credits-btn:focus-visible { outline: none; }
+/* credits at the card foot — always visible, RIGHT-JUSTIFIED: logo, two
+   mandated credit lines, legal copy beneath */
+.card-credits { margin: 2.4rem 0 0.5rem; text-align: right; }
+.card-credits-line { display: block; }
 .card-credits-logo {
   display: block;
   width: 7.5rem;
   height: auto;
-  margin: 0.9rem 0 0.8rem;
+  margin: 0.9rem 0 0.8rem auto; /* right-justified with the copy below */
 }
 .card-credits-body {
   margin-top: 0.7rem;

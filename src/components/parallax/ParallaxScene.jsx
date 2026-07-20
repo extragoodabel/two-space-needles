@@ -78,14 +78,15 @@ const CRAWL_LINES = [
   //      window) mid-sky, then both ride up and off together.
   //   The campaign lockup NO LONGER rides the crawl — it MATERIALIZES in
   //      place (see the parallax-lockup element) as "times two" scrolls off.
-  { key: 'c6', lines: ['An', 'Iconic', 'View'], at: 280, iconic: true }, // enters ≈2.14, once TSN is riding off — no crowding of the split
-  // c7 sits DIRECTLY beneath c6 (at 295 = c6's offset + its 3-row height) so
-  // the pair reads as ONE statement, in THREE distinct phases: c6 fully
-  // assembled and ALONE 2.34→2.46 · "TIMES TWO" materializes 2.46→2.54 ·
-  // the completed "AN ICONIC VIEW TIMES TWO" holds intact until ≈2.59 (over
-  // the illumination), then rides off together — c7 enters the top band
-  // ≈2.72 and is fully gone ≈2.8 — THEN the lockup materializes (2.82).
-  { key: 'c7', lines: ['times', 'two'], at: 295, iconic: true, fadeIn: [2.46, 2.54] },
+  // c6 + its FOLLOW GROUP read as one five-row statement (AN/ICONIC/VIEW/
+  // TIMES/TWO) with EQUAL spacing between every row on any screen — "times
+  // two" flows directly under "view" at the same line rhythm (it used to be
+  // a separate block positioned in cqh, which collided on tall/narrow
+  // phones). Three phases preserved: c6 assembled and ALONE 2.34→2.46 ·
+  // "TIMES TWO" materializes in place 2.46→2.54 · the completed statement
+  // holds through the illumination, then rides off together — fully gone
+  // ≈2.8 — THEN the lockup materializes (2.82).
+  { key: 'c6', lines: ['An', 'Iconic', 'View'], at: 280, iconic: true, follow: { lines: ['times', 'two'], fadeIn: [2.46, 2.54] } }, // enters ≈2.14, once TSN is riding off
 ];
 // Column-top keyframes (% of frame height) — ONE linear span = constant
 // crawl speed (120% of frame height per 1.0 progress). kfPos clamps at the
@@ -193,30 +194,26 @@ function KitSubscribe() {
   );
 }
 
-// discreet expandable credits at the foot of a card (About)
+// credits at the foot of the About card — always visible, right-justified:
+// logo, two mandated lines, legal copy beneath
 function CardCredits() {
-  const [open, setOpen] = useState(false);
   return (
     <div className="card-credits">
-      <button type="button" className="card-credits-btn" onClick={() => setOpen((o) => !o)}>
-        Credits
-      </button>
-      {open && (
-        <div className="card-credits-body">
-          <a href="https://www.extragood.studio/" target="_blank" rel="noreferrer" aria-label="Extra Good Studio">
-            <img className="card-credits-logo" src="/logo/eg-logo-mustard.png" alt="Extra Good!" draggable="false" />
-          </a>
-          <p>
-            The Campaign for Two Space Needles is an{' '}
-            <a href="https://www.extragood.studio/" target="_blank" rel="noreferrer">{'Extra\u00A0Good\u00A0Studio'}</a>{' '}
-            production.
-          </p>
-          <p>
-            Two Space Needles is in no way related to the original Space Needle, the Space Needle
-            Corporation, or the Wright family.
-          </p>
-        </div>
-      )}
+      <div className="card-credits-body">
+        <a href="https://www.extragood.studio/" target="_blank" rel="noreferrer" aria-label="Extra Good Studio">
+          <img className="card-credits-logo" src="/logo/eg-logo-mustard.png" alt="Extra Good!" draggable="false" />
+        </a>
+        <p>
+          <span className="card-credits-line">The Campaign for Two Space Needles</span>
+          <span className="card-credits-line">
+            is an <a href="https://www.extragood.studio/" target="_blank" rel="noreferrer">{'Extra\u00A0Good\u00A0Studio'}</a> production.
+          </span>
+        </p>
+        <p>
+          Two Space Needles is in no way related to the original Space Needle, the Space Needle
+          Corporation, or the Wright family.
+        </p>
+      </div>
     </div>
   );
 }
@@ -928,6 +925,17 @@ export default function ParallaxScene({ motionGain = 1 }) {
                       `dots` = the trailing ellipsis gets its own row */}
                   {l.lines ? l.lines.map((ln, i) => <span key={i} className="parallax-crawl-subline">{ln}</span>) : l.text}
                   {l.dots && <span className="parallax-crawl-subline">...</span>}
+                  {l.follow && (() => {
+                    const ft = smoothstep(clamp01((progress - l.follow.fadeIn[0]) / (l.follow.fadeIn[1] - l.follow.fadeIn[0])));
+                    return (
+                      <span
+                        className="parallax-crawl-follow"
+                        style={{ opacity: ft, filter: ft < 1 ? `blur(${((1 - ft) * 6).toFixed(2)}px)` : undefined }}
+                      >
+                        {l.follow.lines.map((ln, i) => <span key={i} className="parallax-crawl-subline">{ln}</span>)}
+                      </span>
+                    );
+                  })()}
                 </span>
               ))}
             </div>
