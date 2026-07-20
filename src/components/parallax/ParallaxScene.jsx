@@ -458,6 +458,12 @@ export default function ParallaxScene({ motionGain = 1 }) {
   const [cardRaised, setCardRaised] = useState(false); // card glides up when true
   const [cardClosing, setCardClosing] = useState(false); // card fades out as it rolls back down
   const [rippling, setRippling] = useState(false); // idle attract wave across the layers
+  // ELASTIC DECK (2026-07): the deck is "stitched" — dragging a layer pulls
+  // the whole stack with falloff; release springs it back with a bounce.
+  const [pull, setPull] = useState(null); // { id, delta } — live displacement (% frame height)
+  const pullRef = useRef(null);
+  const dragRef = useRef(null); // { id, startY, moved } during a press
+  const springRaf = useRef(0);
   // MENU button: once everything is in place (deck ready), let the scene
   // breathe for a moment, then materialize it beneath the logo. Resets on
   // scroll-back.
@@ -534,6 +540,12 @@ export default function ParallaxScene({ motionGain = 1 }) {
   }, [rawCloseGame]);
   const deckReady = deckReadyState && activeCard === null;
   const zById = useMemo(() => Object.fromEntries(MOVING_LAYERS.map((l) => [l.id, l.z])), []);
+  // stack order for the elastic pull (front → back, decor excluded — the
+  // elevators follow their needle via deckParent)
+  const elasticIndex = useMemo(() => {
+    const ids = MOVING_LAYERS.filter((l) => !l.decor).map((l) => l.id);
+    return Object.fromEntries(ids.map((id, i) => [id, i]));
+  }, []);
 
   // The parallax owns scroll, EXCEPT while a card is open OR the deck is live
   // (then the deck owns pointer input).
@@ -681,7 +693,8 @@ export default function ParallaxScene({ motionGain = 1 }) {
   // layers (first at 5s, then every 15s) to hint that they're interactive. It's
   // skipped whenever the user is engaging the deck.
   const interactingRef = useRef(false);
-  interactingRef.current = !!(hovered || active || openLayer || menuOpen);
+  interactingRef.current = !!(hovered || active || openLayer || menuOpen || pull);
+  pullRef.current = pull;
   useEffect(() => {
     if (!deckOn) return;
     let interval;
@@ -767,26 +780,66 @@ export default function ParallaxScene({ motionGain = 1 }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const onDeckPointerMove = useCallback((e) => {
-    if (!deckOn || openLayer) return;
-    const id = deckHitTest(e.clientX, e.clientY);
-    if (e.pointerType === 'mouse' && e.buttons === 0) {
-      setHovered((cur) => (cur === id ? cur : id)); // hover
-    } else if (id) {
-      setActive((cur) => (cur === id ? cur : id)); // drag pulls the layer under the pointer
-    }
-  }, [deckOn, openLayer, deckHitTest]);
+  // release: every displaced layer springs home with a light underdamped
+  // bounce — one strong return, a small overshoot, settle (~0.7s)
+  const startSpring = useCallback((from) => {
+    cancelAnimationFrame(springRaf.current);
+    const t0 = performance.now();
+    const step = () => {
+      const t = (performance.now() - t0) / 1000;
+      const sv = Math.exp(-5 * t) * Math.cos(2 * Math.PI * 2.2 * t);
+      if (t > 0.75 || Math.abs(sv) < 0.004) { setPull(null); return; }
+      setPull({ id: from.id, delta: from.delta * sv, springing: true });
+      springRaf.current = requestAnimationFrame(step);
+    };
+    springRaf.current = requestAnimationFrame(step);
+  }, []);
+  useEffect(() => () => cancelAnimationFrame(springRaf.current), []);
 
   const onDeckPointerDown = useCallback((e) => {
     if (!deckOn) return;
-    if (openLayer) return; // a card is open — the ✕ button closes it; card body is for content
+    if (openLayer) return; // a card is open — the ✕ button closes it
+    if (menuOpen) { setMenuOpen(false); return; } // any tap outside the menu chrome closes it
     const id = deckHitTest(e.clientX, e.clientY);
-    if (id && CARD_MAP[id]) { openCardFor(id); return; } // menu layer → open its card
-    if (menuOpen && id == null) { setMenuOpen(false); return; } // empty sky closes the fanned menu
-    setActive((cur) => (id == null ? null : cur === id ? null : id));
-  }, [deckOn, openLayer, menuOpen, deckHitTest, openCardFor]);
+    if (id == null) { setActive(null); return; } // empty sky: release any preview lift
+    // NOTE (2026-07): layers NO LONGER open cards — the MENU is the only
+    // navigation. A press GRABS the layer for the elastic drag; a clean tap
+    // (no movement) toggles its preview lift instead.
+    cancelAnimationFrame(springRaf.current); // grabbing mid-bounce catches the deck
+    dragRef.current = { id, startY: e.clientY, moved: false };
+  }, [deckOn, openLayer, menuOpen, deckHitTest]);
 
-  const onDeckPointerLeave = useCallback(() => setHovered(null), []);
+  const onDeckPointerMove = useCallback((e) => {
+    if (!deckOn || openLayer) return;
+    const drag = dragRef.current;
+    if (drag) {
+      if (Math.abs(e.clientY - drag.startY) > 6) drag.moved = true;
+      if (drag.moved) {
+        const el = frameRef.current;
+        const h = el ? el.getBoundingClientRect().height : 800;
+        const delta = Math.max(-16, Math.min(16, ((e.clientY - drag.startY) / h) * 100));
+        setPull({ id: drag.id, delta });
+      }
+      return;
+    }
+    if (e.pointerType === 'mouse' && e.buttons === 0) {
+      const id = deckHitTest(e.clientX, e.clientY);
+      setHovered((cur) => (cur === id ? cur : id)); // hover ease
+    }
+  }, [deckOn, openLayer, deckHitTest]);
+
+  const onDeckPointerUp = useCallback(() => {
+    const drag = dragRef.current;
+    dragRef.current = null;
+    if (!deckOn) return;
+    if (pullRef.current) startSpring(pullRef.current); // rubber-band home
+    if (drag && !drag.moved) setActive((cur) => (cur === drag.id ? null : drag.id)); // tap: preview lift
+  }, [deckOn, startSpring]);
+
+  const onDeckPointerLeave = useCallback(() => {
+    setHovered(null);
+    if (dragRef.current) { dragRef.current = null; if (pullRef.current) startSpring(pullRef.current); }
+  }, [startSpring]);
 
   return (
     <div
@@ -795,6 +848,8 @@ export default function ParallaxScene({ motionGain = 1 }) {
       aria-label="Illustrated tour of the proposed Century 21 fairgrounds, from overlook to street level"
       onPointerMove={onDeckPointerMove}
       onPointerDown={onDeckPointerDown}
+      onPointerUp={onDeckPointerUp}
+      onPointerCancel={onDeckPointerUp}
       onPointerLeave={onDeckPointerLeave}
       style={{ cursor: deckOn && (hovered || openLayer) ? 'pointer' : undefined }}
     >
@@ -813,7 +868,7 @@ export default function ParallaxScene({ motionGain = 1 }) {
           splitLetters + the .ico-* / .parallax-narration-* / .parallax-header
           / .parallax-logo styles are kept for reference/reuse elsewhere. */}
 
-      <div className={`parallax-frame${deckOn ? ' deck-on' : ''}${openLayer ? ' card-mode' : ''}`} ref={frameRef}>
+      <div className={`parallax-frame${deckOn ? ' deck-on' : ''}${openLayer ? ' card-mode' : ''}${pull ? ' deck-drag' : ''}`} ref={frameRef}>
           {/* ── Shared background plates + spotlights (13–18) ────
               kept clipped to the 9:16 frame so atmosphere never spills */}
           <div className="parallax-bg-clip">
@@ -1110,6 +1165,20 @@ export default function ParallaxScene({ motionGain = 1 }) {
                 if (layer.id === '11') {
                   if (active === '12') deckLift += -5;
                   else if (hovered === '12') deckLift += -2;
+                }
+                // ELASTIC PULL — TIGHT STITCH (rev 2): adjacent layers move
+                // almost together (0.85/step in front, 0.68/step behind), so
+                // a pulled layer's bottom edge stays tucked behind its front
+                // neighbor AND the whole stack visibly participates — a
+                // distant layer still carries ~40% of the pull.
+                if (pull) {
+                  const gi = elasticIndex[pull.id];
+                  const li = elasticIndex[liftId];
+                  if (gi != null && li != null) {
+                    const d = li - gi; // negative = in front of the grabbed layer
+                    const k = d === 0 ? 1 : d < 0 ? Math.pow(0.85, -d) : Math.pow(0.68, d);
+                    deckLift += pull.delta * k;
+                  }
                 }
               }
               // MENU state: the whole world COMPRESSES back down to the

@@ -393,6 +393,12 @@ body {
 .parallax-frame.deck-on .parallax-layer .elevator-clip {
   transition: transform 0.3s cubic-bezier(0.2, 0.7, 0.2, 1); /* snappy hover lift */
 }
+/* while the elastic pull (or its release spring) drives positions per-frame,
+   the CSS transition must not fight it — raw 1:1 tracking */
+.parallax-frame.deck-on.deck-drag .parallax-layer img,
+.parallax-frame.deck-on.deck-drag .parallax-layer .elevator-clip {
+  transition: none;
+}
 /* card open/close: layers slide slowly, in step with the card's glide. On the
    return they land with a subtle overshoot bounce; the per-layer delay (set
    inline) makes them ripple in front → back. */
