@@ -59,6 +59,21 @@ body {
   /* the frame is a true window: nothing is visible outside it (layers rising
      from below are clipped at the bottom edge). */
   overflow: hidden;
+  /* thin gold frame around the whole viewable experience (2026-07).
+     overflow:hidden clips children at the padding box, so the border is
+     never painted over — cards and all. */
+  border: 1px solid var(--mustard, #e8b842);
+}
+/* MOBILE (2026-07): the experience fills the ENTIRE screen — no floating
+   poster margins. Aspect unlocks to the device's own; the frame (and its
+   doubled 2px gold border) runs edge to edge. */
+@media (max-width: 700px) {
+  .parallax-frame {
+    height: 100%;
+    width: 100%;
+    aspect-ratio: auto;
+    border-width: 2px;
+  }
 }
 
 
