@@ -172,8 +172,8 @@ function pickBuildingProfile(rng) {
 const HINT_GLOW_RADIUS_M = 20;
 
 // Model paths: default (set in place), blue-tinted (placing / moving / highlighted), permanent original at Seattle Center.
-const GHOST_MODEL_SRC = "/models/space-needle-park.glb";
-const HIGHLIGHT_MODEL_SRC = "/models/low_poly_space_needle.glb";
+const GHOST_MODEL_SRC = "./models/space-needle-park.glb";
+const HIGHLIGHT_MODEL_SRC = "./models/low_poly_space_needle.glb";
 /** Permanent original Space Needle at Seattle Center — original GLB model. */
 const ORIGINAL_NEEDLE_MODEL_SRC = GHOST_MODEL_SRC;
 /** Altitude offset (m) for original needle so it aligns with footprint; tune if the GLB origin is not at the base. */
@@ -737,7 +737,7 @@ async function generatePostcardJpgDataUrl(polaroid) {
 
   const [img, logoImg] = await Promise.all([
     loadImage(polaroid.dataUrl),
-    loadImage("/eg_logo_postcard.png").catch(() => null),
+    loadImage("./eg_logo_postcard.png").catch(() => null),
   ]);
 
   const W = 1600;
@@ -748,10 +748,10 @@ async function generatePostcardJpgDataUrl(polaroid) {
   canvas.height = H;
   const ctx = canvas.getContext("2d");
 
-  const bg = "#f6f4ef";
-  const white = "#ffffff";
-  const ink = "#111111";
-  const muted = "rgba(17,17,17,0.75)";
+  const bg = "#F2E8CC";
+  const white = "#F2E8CC";
+  const ink = "#0B1428";
+  const muted = "rgba(11, 20, 40,0.75)";
 
   const margin = 70;
   const infoBlockH = 220;
@@ -1582,7 +1582,7 @@ function generatePlaceholderPolaroid(metadata, width = 1200, height = 900) {
   if (vctx) {
     vctx.drawImage(renderer.domElement, 0, 0);
     const grad = vctx.createRadialGradient(width / 2, height / 2, width * 0.2, width / 2, height / 2, width * 0.75);
-    grad.addColorStop(0, "rgba(255,255,255,0)");
+    grad.addColorStop(0, "rgba(242, 232, 204,0)");
     grad.addColorStop(0.6, "rgba(200,200,200,0.15)");
     grad.addColorStop(1, "rgba(80,80,80,0.4)");
     vctx.globalCompositeOperation = "multiply";
@@ -1879,24 +1879,24 @@ export default function MapScene() {
               FOOTPRINT_RADIUS_M,
               CIRCLE_POINTS
             ),
-            fillColor: "rgba(124, 179, 66, 0.25)",
-            strokeColor: "rgba(85, 139, 47, 0.8)",
+            fillColor: "rgba(136, 181, 216, 0.25)",
+            strokeColor: "rgba(59, 127, 184, 0.8)",
             strokeWidth: 2,
             altitudeMode: "RELATIVE_TO_GROUND",
           });
           footprintRef.current = footprint;
           const hintGlow = new Polygon3DElement({
             path: circleCoordinates(SEATTLE_CENTER.lat, SEATTLE_CENTER.lng, HINT_GLOW_RADIUS_M, CIRCLE_POINTS),
-            fillColor: "rgba(224, 162, 26, 0.35)",
-            strokeColor: "rgba(224, 162, 26, 0.6)",
+            fillColor: "rgba(232, 184, 66, 0.35)",
+            strokeColor: "rgba(232, 184, 66, 0.6)",
             strokeWidth: 2,
             altitudeMode: "RELATIVE_TO_GROUND",
           });
           hintGlowRef.current = hintGlow;
           const footprintHighlight = new Polygon3DElement({
             path: circleCoordinates(SEATTLE_CENTER.lat, SEATTLE_CENTER.lng, FOOTPRINT_RADIUS_M, CIRCLE_POINTS),
-            fillColor: "rgba(124, 179, 66, 0.45)",
-            strokeColor: "rgba(85, 139, 47, 1)",
+            fillColor: "rgba(136, 181, 216, 0.45)",
+            strokeColor: "rgba(59, 127, 184, 1)",
             strokeWidth: 3,
             altitudeMode: "RELATIVE_TO_GROUND",
           });
@@ -2874,9 +2874,9 @@ export default function MapScene() {
     canvas.height = 300;
     const ctx = canvas.getContext("2d");
     if (!ctx) return null;
-    ctx.fillStyle = "#e8e8e0";
+    ctx.fillStyle = "#F2E8CC";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
-    ctx.fillStyle = "#333";
+    ctx.fillStyle = "#13243F";
     ctx.font = "16px Inter, sans-serif";
     ctx.textAlign = "center";
     ctx.fillText("Screenshot unavailable", canvas.width / 2, canvas.height / 2);
@@ -3105,46 +3105,59 @@ export default function MapScene() {
 
   return (
     <div className="exhibit-page">
-      <audio ref={crunchAudioRef} src="/audio/crunch.mp3" preload="auto" />
-      <audio ref={glassSmashAudioRef} src="/audio/glass-smash.mp3" preload="auto" />
-      <audio ref={splashAudioRef} src="/audio/splash.mp3" preload="auto" />
-      <audio ref={dogBarkAudioRef} src="/audio/dog-bark.mp3" preload="auto" />
-      <audio ref={baseballOrganAudioRef} src="/audio/baseball-organ.mp3" preload="auto" />
-      <audio ref={crowdStompAudioRef} src="/audio/crowd-stomp.mp3" preload="auto" />
-      <audio ref={airHornAudioRef} src="/audio/air-horn.mp3" preload="auto" />
-      <audio ref={wilhelmAudioRef} src="/audio/wilhelm.mp3" preload="auto" />
-      <audio ref={poofAudioRef} src="/audio/poof.mp3" preload="auto" />
-      <audio ref={moveAudioRef} src="/audio/move.mp3" preload="auto" />
-      <audio ref={visitAudioRef} src="/audio/visit.mp3" preload="auto" />
-      <audio ref={cameraShutterAudioRef} src="/audio/camera-shutter.mp3" preload="auto" />
-      <audio ref={placeNeedleAudioRef} src="/audio/percussive-hit.mp3" preload="auto" />
-      <audio ref={shootingSoundRef} src="/audio/shooting-sound-fx.mp3" preload="auto" />
+      <audio ref={crunchAudioRef} src="./audio/crunch.mp3" preload="auto" />
+      <audio ref={glassSmashAudioRef} src="./audio/glass-smash.mp3" preload="auto" />
+      <audio ref={splashAudioRef} src="./audio/splash.mp3" preload="auto" />
+      <audio ref={dogBarkAudioRef} src="./audio/dog-bark.mp3" preload="auto" />
+      <audio ref={baseballOrganAudioRef} src="./audio/baseball-organ.mp3" preload="auto" />
+      <audio ref={crowdStompAudioRef} src="./audio/crowd-stomp.mp3" preload="auto" />
+      <audio ref={airHornAudioRef} src="./audio/air-horn.mp3" preload="auto" />
+      <audio ref={wilhelmAudioRef} src="./audio/wilhelm.mp3" preload="auto" />
+      <audio ref={poofAudioRef} src="./audio/poof.mp3" preload="auto" />
+      <audio ref={moveAudioRef} src="./audio/move.mp3" preload="auto" />
+      <audio ref={visitAudioRef} src="./audio/visit.mp3" preload="auto" />
+      <audio ref={cameraShutterAudioRef} src="./audio/camera-shutter.mp3" preload="auto" />
+      <audio ref={placeNeedleAudioRef} src="./audio/percussive-hit.mp3" preload="auto" />
+      <audio ref={shootingSoundRef} src="./audio/shooting-sound-fx.mp3" preload="auto" />
       <button
         type="button"
         className="exhibit-audio-button"
         onClick={() => openAudioModal()}
         aria-label="Open audio settings"
       >
-        Audio
+        {/* flat vintage speaker glyph — box + cone + waves, single ink */}
+        <svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M4 9v6h4l5 5V4L8 9H4z" fill="currentColor" />
+          <path
+            d="M16 9c1.6 1.4 1.6 4.6 0 6M18.5 7c2.8 2.4 2.8 7.6 0 10"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="square"
+          />
+        </svg>
       </button>
       <div className="exhibit-panel">
         <header className="exhibit-header">
           <h1 className="exhibit-title">PLACE NEEDLES</h1>
           <p className="exhibit-subhead">
             Civic expansion simulator by{" "}
-            <a
-              href="https://www.twospaceneedles.com"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="exhibit-header-link"
-            >
+            <span className="exhibit-header-link">
               Two Space Needles campaign
-            </a>.
+            </span>.
           </p>
           <p className="exhibit-instructions">
             {isMobileView
               ? "Drag and release to place Needle. Observe civic impact."
-              : "Click to place Needle. Observe civic impact."}
+              : "Click to place Needle. Observe civic impact."}{" "}
+            <button
+              type="button"
+              className="exhibit-credits-button"
+              onClick={() => setCreditsOpen(true)}
+              aria-label="Open credits"
+            >
+              Credits
+            </button>
           </p>
         </header>
         <div className="exhibit-viewport">
@@ -3307,6 +3320,20 @@ export default function MapScene() {
                         Space Needle #1
                       </div>
                     )}
+                    <button
+                      type="button"
+                      onClick={() => !isMobileView && onVisitNeedle(hoveredNeedleId)}
+                      onPointerUp={(e) => {
+                        if (isMobileView) {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          onVisitNeedle(hoveredNeedleId);
+                        }
+                      }}
+                      aria-label="View this needle"
+                    >
+                      View Needle
+                    </button>
                     {!isOriginal && (
                       <button
                         type="button"
@@ -3340,20 +3367,6 @@ export default function MapScene() {
                         Remove Needle
                       </button>
                     )}
-                    <button
-                      type="button"
-                      onClick={() => !isMobileView && onVisitNeedle(hoveredNeedleId)}
-                      onPointerUp={(e) => {
-                        if (isMobileView) {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          onVisitNeedle(hoveredNeedleId);
-                        }
-                      }}
-                      aria-label="View this needle"
-                    >
-                      View Needle
-                    </button>
                   </div>
                 )
               );
@@ -3396,6 +3409,37 @@ export default function MapScene() {
           )}
         </div>
         <div className="exhibit-data">
+          {/* DESKTOP: the control keys occupy the block left of the
+              estimate/civic boxes (hidden on mobile via CSS) */}
+        <div className="exhibit-desktop-controls">
+          <button
+            type="button"
+            className="exhibit-desktop-controls-credits"
+            onClick={() => setCreditsOpen(true)}
+            aria-label="Open credits"
+          >
+            Credits
+          </button>
+          <button
+            type="button"
+            className="exhibit-desktop-controls-erase exhibit-btn-clear"
+            disabled={placements.length < 1}
+            onClick={() => {
+              if (placements.length < 1) return;
+              onClearNeedles();
+            }}
+          >
+            Erase Needles
+          </button>
+          <button
+            type="button"
+            className="exhibit-desktop-controls-audio"
+            onClick={() => openAudioModal()}
+            aria-label="Open audio settings"
+          >
+            Audio
+          </button>
+        </div>
           {(() => {
             const placingValuation =
               isPlacing && hoverLatLng
@@ -3521,35 +3565,6 @@ export default function MapScene() {
               </div>
             );
           })()}
-        </div>
-        <div className="exhibit-desktop-controls">
-          <button
-            type="button"
-            className="exhibit-desktop-controls-credits"
-            onClick={() => setCreditsOpen(true)}
-            aria-label="Open credits"
-          >
-            Credits
-          </button>
-          <button
-            type="button"
-            className="exhibit-desktop-controls-erase exhibit-btn-clear"
-            disabled={placements.length < 1}
-            onClick={() => {
-              if (placements.length < 1) return;
-              onClearNeedles();
-            }}
-          >
-            Erase Needles
-          </button>
-          <button
-            type="button"
-            className="exhibit-desktop-controls-audio"
-            onClick={() => openAudioModal()}
-            aria-label="Open audio settings"
-          >
-            Audio
-          </button>
         </div>
         <div className="exhibit-buttons-section">
           <div className="mobile-topbar">
@@ -3754,14 +3769,6 @@ export default function MapScene() {
           </div>
         </>
       )}
-      <button
-        type="button"
-        className="exhibit-credits-button"
-        onClick={() => setCreditsOpen(true)}
-        aria-label="Open credits"
-      >
-        Credits
-      </button>
       {creditsOpen && (
         <>
           <div
@@ -3784,15 +3791,15 @@ export default function MapScene() {
               </div>
               <div className="exhibit-credits-modal-body">
                 <p className="exhibit-credits-intro">
-                  Place Needles is an{" "}
+                  The Campaign for Two Space Needles is an{" "}
                   <a href="https://www.extragood.studio" target="_blank" rel="noopener noreferrer" className="exhibit-credits-eg-link">
-                    Extra Good Studio
+                    {'Extra\u00A0Good\u00A0Studio'}
                   </a>{" "}
                   production.
                 </p>
                 <div className="exhibit-credits-eg-logo-wrap">
                   <a href="https://www.extragood.studio" target="_blank" rel="noopener noreferrer" className="exhibit-credits-eg-logo-link" aria-label="Extra Good Studio">
-                    <img src="/eg_logo.png" alt="" className="exhibit-credits-eg-logo" />
+                    <img src="./eg_logo.png" alt="" className="exhibit-credits-eg-logo" />
                   </a>
                 </div>
                 <section className="exhibit-credits-section exhibit-credits-music-section">
@@ -3827,6 +3834,9 @@ export default function MapScene() {
                     </ul>
                   </section>
                 ))}
+                <p className="exhibit-credits-disclaimer">
+                  Two Space Needles is in no way related to the original Space Needle, the Space Needle Corporation, or the Wright family.
+                </p>
               </div>
             </div>
           </div>

@@ -2,17 +2,17 @@
 /* No gradients. No shadows. No blur. Sharp corners only. */
 
 :root {
-  --fair-blue: #0D2B4F;
-  --mustard: #E0A21A;
-  --atomic-red: #B5232F;
-  --white: #FFFFFF;
-  --black: #111111;
+  --fair-blue: #13243F;
+  --mustard: #E8B842;
+  --atomic-red: #D9342B;
+  --white: #F2E8CC;
+  --black: #0B1428;
 
   --border-thick: 6px;
   --header-height: 56px;
   --footer-height: 88px;
 
-  font-family: "Inter", system-ui, sans-serif;
+  font-family: "Work Sans", system-ui, sans-serif;
   font-weight: 400;
   line-height: 1.4;
   color: var(--white);
@@ -46,7 +46,7 @@ body {
 /* Headlines: bold geometric sans, all caps, letter-spacing */
 .exhibit-headline,
 h1, .exhibit-header h1 {
-  font-family: "League Spartan", sans-serif;
+  font-family: "Oswald", sans-serif;
   font-weight: 700;
   font-size: 1.25rem;
   letter-spacing: 0.1em;
@@ -57,17 +57,17 @@ h1, .exhibit-header h1 {
 }
 
 .exhibit-subhead {
-  font-family: "League Spartan", sans-serif;
+  font-family: "Oswald", sans-serif;
   font-weight: 600;
   font-size: 0.7rem;
   letter-spacing: 0.12em;
   text-transform: uppercase;
   margin: 0.25rem 0 0 0;
-  color: var(--black);
+  color: var(--atomic-red);
 }
 
 .exhibit-instructions {
-  font-family: "Inter", sans-serif;
+  font-family: "Work Sans", sans-serif;
   font-size: 0.75rem;
   font-weight: 400;
   margin: 0.35rem 0 0 0;
@@ -82,7 +82,7 @@ button {
   padding: 0.5em 1em;
   font-size: 0.875rem;
   font-weight: 500;
-  font-family: "Inter", sans-serif;
+  font-family: "Work Sans", sans-serif;
   cursor: pointer;
   transition: none;
 }
@@ -175,11 +175,7 @@ button:focus-visible {
 .exhibit-header-link {
   color: var(--fair-blue);
   font-weight: 600;
-  text-decoration: underline;
-  text-underline-offset: 2px;
-}
-.exhibit-header-link:hover {
-  color: var(--atomic-red);
+  text-decoration: none;
 }
 /* ----- Viewport (map area) ----- */
 .exhibit-viewport {
@@ -238,7 +234,7 @@ button:focus-visible {
   padding: 10px 20px;
   font-size: 0.9rem;
   font-weight: 600;
-  font-family: "Inter", sans-serif;
+  font-family: "Work Sans", sans-serif;
   background-color: var(--mustard);
   color: var(--black);
   border: 2px solid var(--black);
@@ -371,14 +367,14 @@ button:focus-visible {
   width: 100%;
   padding: 8px 12px;
   font-size: 0.75rem;
-  font-family: "Inter", sans-serif;
+  font-family: "Work Sans", sans-serif;
   cursor: pointer;
   background-color: transparent;
   border: none;
   border-radius: 0;
   color: var(--white);
   text-align: left;
-  border-bottom: 1px solid rgba(224, 162, 26, 0.3);
+  border-bottom: 1px solid rgba(232, 184, 66, 0.3);
   pointer-events: auto;
   touch-action: manipulation;
   min-height: 44px;
@@ -391,17 +387,17 @@ button:focus-visible {
   letter-spacing: 0.05em;
   color: var(--mustard);
   text-align: left;
-  border-bottom: 1px solid rgba(224, 162, 26, 0.3);
+  border-bottom: 1px solid rgba(232, 184, 66, 0.3);
 }
 .needle-action-menu button:last-of-type {
   border-bottom: none;
 }
 .needle-action-menu button:hover {
-  background-color: rgba(224, 162, 26, 0.2);
+  background-color: rgba(232, 184, 66, 0.2);
   color: var(--white);
 }
 .needle-action-menu button.exhibit-btn-destructive:hover {
-  background-color: rgba(181, 35, 47, 0.4);
+  background-color: rgba(181, 37, 29, 0.4);
   color: var(--white);
 }
 
@@ -422,9 +418,9 @@ button:focus-visible {
 
 /* Green outline on 3D needle model when placing (ghost) or when hovered (menu open). */
 .needle-model-outlined {
-  outline: 2px solid rgba(85, 139, 47, 1);
+  outline: 2px solid rgba(59, 127, 184, 1);
   outline-offset: 2px;
-  box-shadow: 0 0 0 2px rgba(85, 139, 47, 0.85), 0 0 20px rgba(85, 139, 47, 0.5);
+  box-shadow: 0 0 0 2px rgba(59, 127, 184, 0.85), 0 0 20px rgba(59, 127, 184, 0.5);
   border-radius: 2px;
 }
 
@@ -446,13 +442,13 @@ button:focus-visible {
 }
 .exhibit-btn-clear {
   flex-shrink: 0;
-  background-color: #6B9DC2;
+  background-color: #D9342B;
   color: var(--white);
   border: 2px solid var(--black);
   border-radius: 0;
   padding: 6px 14px;
   font-size: 0.75rem;
-  font-family: "Inter", sans-serif;
+  font-family: "Work Sans", sans-serif;
   cursor: pointer;
 }
 .exhibit-btn-clear:hover:not(:disabled) {
@@ -478,7 +474,7 @@ button:focus-visible {
   background-color: var(--fair-blue);
   border-top: 2px solid var(--mustard);
   font-size: 0.75rem;
-  font-family: "Inter", sans-serif;
+  font-family: "Work Sans", sans-serif;
   min-width: 0;
 }
 
@@ -492,7 +488,7 @@ button:focus-visible {
 }
 .exhibit-panel-divider {
   width: 2px;
-  background: #f6e05e;
+  background: #F4D272;
   align-self: stretch;
   border-radius: 1px;
 }
@@ -516,7 +512,7 @@ button:focus-visible {
 
 .exhibit-key-title-live,
 .exhibit-key-title-civic {
-  font-family: "League Spartan", sans-serif;
+  font-family: "Oswald", sans-serif;
   font-size: 0.65rem;
   font-weight: 600;
   letter-spacing: 0.1em;
@@ -624,7 +620,7 @@ button:focus-visible {
   margin: 0;
   padding: 8px 20px;
   font-size: clamp(0.75rem, 2vw, 0.9rem);
-  font-family: "Inter", sans-serif;
+  font-family: "Work Sans", sans-serif;
   background-color: var(--mustard);
   color: var(--black);
   border: 2px solid var(--black);
@@ -641,27 +637,33 @@ button:focus-visible {
   opacity: 0.5;
   filter: saturate(0.6);
   background-color: var(--fair-blue);
-  color: rgba(255, 255, 255, 0.5);
-  border-color: rgba(255, 255, 255, 0.35);
+  color: rgba(242, 232, 204, 0.5);
+  border-color: rgba(242, 232, 204, 0.35);
 }
 .exhibit-place-another:disabled:hover,
 .exhibit-place-another:disabled:active {
   filter: saturate(0.6);
 }
 
-/* Sound button: floating, mustard style */
+/* Sound button: same cell system as the site's EXIT button (which sits
+   directly above at top:12px right:12px) — one 112px button column */
 .exhibit-sound-toggle,
 .exhibit-audio-button {
   position: fixed;
-  top: 12px;
+  top: 50px; /* tucked under the site's ✕ cell, level with the header line at left */
   right: 12px;
   z-index: 10000;
-  padding: 6px 12px;
-  font-size: 0.75rem;
-  background-color: var(--mustard);
-  color: var(--black);
-  border: 2px solid var(--black);
-  border-radius: 0;
+  box-sizing: border-box;
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  line-height: 1;
+  background: none;
+  color: var(--mustard);
+  border: 0;
+  cursor: pointer;
 }
 
 /* Audio modal: same visual language as credits modal */
@@ -700,12 +702,12 @@ button:focus-visible {
   align-items: center;
   justify-content: space-between;
   padding: 10px 12px;
-  border-bottom: 1px solid rgba(13, 43, 79, 0.25);
+  border-bottom: 1px solid rgba(19, 36, 63, 0.25);
   flex-shrink: 0;
 }
 
 .exhibit-audio-modal-title {
-  font-family: "League Spartan", sans-serif;
+  font-family: "Oswald", sans-serif;
   font-size: 0.9rem;
   font-weight: 700;
   letter-spacing: 0.08em;
@@ -772,7 +774,7 @@ button:focus-visible {
 .exhibit-audio-credits-wrap {
   margin-top: 8px;
   padding-top: 12px;
-  border-top: 1px solid rgba(13, 43, 79, 0.25);
+  border-top: 1px solid rgba(19, 36, 63, 0.25);
 }
 
 .exhibit-audio-see-credits {
@@ -927,7 +929,7 @@ button:focus-visible {
     color: var(--black);
     border: 2px solid var(--black);
     border-radius: 0;
-    font-family: "Inter", sans-serif;
+    font-family: "Work Sans", sans-serif;
     cursor: pointer;
   }
   .exhibit-desktop-controls-credits {
@@ -1010,7 +1012,7 @@ button:focus-visible {
     color: var(--black);
     border: 2px solid var(--black);
     border-radius: 0;
-    font-family: "Inter", sans-serif;
+    font-family: "Work Sans", sans-serif;
     cursor: pointer;
   }
   .mobile-topbar-credits:hover,
@@ -1032,13 +1034,13 @@ button:focus-visible {
   font-size: 0.7rem;
   padding: 4px 8px;
   background: transparent;
-  border: 1px solid rgba(255, 255, 255, 0.4);
-  color: rgba(255, 255, 255, 0.75);
+  border: 1px solid rgba(242, 232, 204, 0.4);
+  color: rgba(242, 232, 204, 0.75);
   font-weight: 400;
 }
 .exhibit-credits-button:hover {
   color: var(--white);
-  border-color: rgba(255, 255, 255, 0.7);
+  border-color: rgba(242, 232, 204, 0.7);
 }
 
 /* Polaroid overlay: materializes after Take Photo */
@@ -1105,7 +1107,7 @@ button:focus-visible {
   aspect-ratio: 4/3;
   overflow: hidden;
   margin-bottom: 10px;
-  background: #e8e8e0;
+  background: #F2E8CC;
 }
 
 .exhibit-polaroid-developing {
@@ -1116,7 +1118,7 @@ button:focus-visible {
   font-size: 0.75rem;
   font-weight: 600;
   color: var(--black);
-  background: rgba(255, 255, 255, 0.9);
+  background: rgba(242, 232, 204, 0.9);
   padding: 4px 10px;
   border: 1px solid var(--black);
 }
@@ -1138,14 +1140,14 @@ button:focus-visible {
   width: 7px;
   height: 7px;
   border-radius: 999px;
-  background: #ff2d2d;
-  box-shadow: 0 0 10px rgba(255, 45, 45, 0.7);
+  background: #D9342B;
+  box-shadow: 0 0 10px rgba(217, 52, 43, 0.7);
 }
 
 .polaroid-warning .battery {
   width: 18px;
   height: 10px;
-  border: 1.5px solid #ff2d2d;
+  border: 1.5px solid #D9342B;
   border-radius: 2px;
   position: relative;
 }
@@ -1157,12 +1159,12 @@ button:focus-visible {
   top: 2px;
   width: 3px;
   height: 6px;
-  background: #ff2d2d;
+  background: #D9342B;
   border-radius: 1px;
 }
 
 .polaroid-warning .polaroid-warning-label {
-  color: #ff2d2d;
+  color: #D9342B;
   font-weight: 600;
 }
 
@@ -1272,7 +1274,7 @@ button:focus-visible {
 }
 
 .exhibit-polaroid-greeting {
-  font-family: "League Spartan", sans-serif;
+  font-family: "Oswald", sans-serif;
   font-size: 0.9rem;
   font-weight: 600;
   color: var(--black);
@@ -1389,11 +1391,11 @@ button:focus-visible {
   align-items: center;
   justify-content: space-between;
   padding: 10px 12px;
-  border-bottom: 1px solid rgba(13, 43, 79, 0.25);
+  border-bottom: 1px solid rgba(19, 36, 63, 0.25);
   flex-shrink: 0;
 }
 .exhibit-credits-modal-title {
-  font-family: "League Spartan", sans-serif;
+  font-family: "Oswald", sans-serif;
   font-size: 0.9rem;
   font-weight: 700;
   letter-spacing: 0.08em;
@@ -1436,7 +1438,7 @@ button:focus-visible {
 .exhibit-credits-eg-logo-wrap {
   margin-bottom: 0;
   padding-bottom: 14px;
-  border-bottom: 1px solid rgba(13, 43, 79, 0.35);
+  border-bottom: 1px solid rgba(19, 36, 63, 0.35);
 }
 .exhibit-credits-music-block {
   margin: 0;
@@ -1469,7 +1471,7 @@ button:focus-visible {
 .exhibit-credits-section {
   margin: 0 0 14px 0;
   padding-top: 10px;
-  border-top: 1px solid rgba(13, 43, 79, 0.35);
+  border-top: 1px solid rgba(19, 36, 63, 0.35);
 }
 .exhibit-credits-section:first-of-type {
   padding-top: 10px;
@@ -1481,7 +1483,7 @@ button:focus-visible {
   margin-bottom: 0;
 }
 .exhibit-credits-category {
-  font-family: "League Spartan", sans-serif;
+  font-family: "Oswald", sans-serif;
   font-size: 0.7rem;
   font-weight: 600;
   letter-spacing: 0.08em;
@@ -1523,4 +1525,242 @@ button:focus-visible {
 }
 .exhibit-credits-link:hover {
   color: var(--black);
+}
+
+/* site-match (2026-07): lift the 3D map out of its washed-out default */
+gmp-map-3d { filter: saturate(1.28) contrast(1.06) brightness(0.95); }
+
+/* site-match (2026-07): game frame in richer gold */
+.exhibit-panel { border-color: #F0B429; }
+
+/* ── SIMPLIFIED CHROME (2026-07, site-match): no outer gold frame. Two gold
+   boxes — MAP and DATA/estimate — on the blue field; header type directly on
+   blue (title white, subhead yellow); buttons hover unframed between boxes. */
+.exhibit-panel { border: none; padding: 0 12px 40px; } /* bottom band frees room for the credits button */
+.exhibit-header { background: none; border-bottom: none; padding: 0.85rem 0 0.6rem; }
+.exhibit-header .exhibit-title { color: var(--white); }
+.exhibit-header .exhibit-subhead { color: var(--mustard); }
+.exhibit-header .exhibit-instructions { color: #F2E8CCd9; }
+.exhibit-header-link { color: var(--mustard); }
+.exhibit-viewport { border: 2px solid #F0B429; }
+.exhibit-buttons-section { border-top: none; background: none; padding-left: 0; padding-right: 0; }
+.exhibit-data { border: 2px solid #F0B429; background-color: var(--fair-blue); }
+
+/* bare icon buttons: no focus square after click */
+.exhibit-sound-toggle:focus,
+.exhibit-sound-toggle:focus-visible,
+.exhibit-audio-button:focus,
+.exhibit-audio-button:focus-visible { outline: none; box-shadow: none; }
+
+/* ── PUSH-BUTTON SYSTEM (site-match 2026-07): game buttons carry the site
+   Play button's 3D pressable body — Oswald type, hard dark edge, compress
+   on press. PLACE + ERASE share one exact 44px height. ── */
+.exhibit-place-another, .exhibit-btn-clear, .exhibit-btn-primary, .needle-exit-view, .needle-take-photo {
+  font-family: 'Oswald', 'Arial Narrow', sans-serif;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  border: 2px solid var(--black);
+  border-radius: 0;
+  cursor: pointer;
+  box-shadow: 0 4px 0 #9c7a1e, 0 7px 10px rgba(0, 0, 0, 0.35);
+  transition: transform 0.12s ease, box-shadow 0.12s ease, background-color 0.12s ease, color 0.12s ease;
+}
+.exhibit-place-another, .exhibit-btn-clear {
+  box-sizing: border-box;
+  height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 20px;
+  font-size: 0.8rem;
+  line-height: 1;
+}
+.exhibit-btn-clear { box-shadow: 0 4px 0 #8a2119, 0 7px 10px rgba(0, 0, 0, 0.35); }
+.exhibit-place-another:active:not(:disabled), .exhibit-btn-primary:active, .needle-exit-view:active, .needle-take-photo:active {
+  transform: translateY(3px);
+  box-shadow: 0 1px 0 #8a2119, 0 2px 4px rgba(0, 0, 0, 0.3);
+  background-color: var(--atomic-red);
+  color: var(--white);
+  filter: none;
+}
+.exhibit-btn-clear:active:not(:disabled) {
+  transform: translateY(3px);
+  box-shadow: 0 1px 0 #8a2119, 0 2px 4px rgba(0, 0, 0, 0.3);
+  filter: brightness(0.92);
+}
+.exhibit-place-another:disabled { box-shadow: none; transform: none; }
+
+/* disclaimer at the very bottom of the credits modal */
+.exhibit-credits-disclaimer {
+  margin: 16px 0 0;
+  padding-top: 10px;
+  border-top: 1px solid rgba(19, 36, 63, 0.25);
+  font-size: 0.68rem;
+  font-style: italic;
+  color: var(--fair-blue);
+  opacity: 0.75;
+}
+
+/* ── MOBILE game chrome (2026-07, site-match) ── */
+@media (max-width: 600px) {
+  /* PLACE + ERASE share ONE row: 60/40, equal height */
+  .exhibit-buttons-section { flex-direction: row; align-items: stretch; gap: 10px; }
+  .exhibit-place-another { order: 0; flex: 0 0 60%; max-width: 60%; min-width: 0; height: 44px; }
+  .exhibit-btn-clear { order: 0; flex: 1 1 auto; min-width: 0; height: 44px; padding: 0 8px; }
+  /* speaker rides BESIDE the site's ✕ (one top-right row) */
+  .exhibit-sound-toggle, .exhibit-audio-button { top: 12px; right: 60px; }
+  /* Credits: a small quiet chip at the end of the instructions line */
+  .exhibit-credits-button { position: static; display: inline-block; margin-left: 6px; padding: 1px 7px; font-size: 0.62rem; vertical-align: 1px; }
+}
+
+/* ── PUSH-BUTTON PARITY (2026-07): every game button carries the same 3D
+   pressable body as ERASE ── */
+@media (max-width: 600px) {
+  .needle-place-overlay {
+    font-family: 'Oswald', 'Arial Narrow', sans-serif;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    box-shadow: 0 4px 0 #9c7a1e, 0 7px 10px rgba(0, 0, 0, 0.35);
+    transition: transform 0.12s ease, box-shadow 0.12s ease, background-color 0.12s ease, color 0.12s ease;
+  }
+  .needle-place-overlay:active {
+    transform: translateY(3px);
+    box-shadow: 0 1px 0 #8a2119, 0 2px 4px rgba(0, 0, 0, 0.3);
+    background-color: var(--atomic-red);
+    color: var(--white);
+  }
+  .exhibit-sound-toggle, .exhibit-audio-button {
+    background: var(--mustard);
+    color: var(--black);
+    border: 2px solid var(--black);
+    box-shadow: 0 4px 0 #9c7a1e, 0 7px 10px rgba(0, 0, 0, 0.35);
+    transition: transform 0.12s ease, box-shadow 0.12s ease;
+  }
+  .exhibit-sound-toggle:active, .exhibit-audio-button:active {
+    transform: translateY(3px);
+    box-shadow: 0 1px 0 #8a2119, 0 2px 4px rgba(0, 0, 0, 0.3);
+  }
+  .exhibit-sound-toggle:focus, .exhibit-sound-toggle:focus-visible,
+  .exhibit-audio-button:focus, .exhibit-audio-button:focus-visible {
+    outline: none;
+    box-shadow: 0 4px 0 #9c7a1e, 0 7px 10px rgba(0, 0, 0, 0.35);
+  }
+  .exhibit-credits-button {
+    background: var(--mustard);
+    color: var(--black);
+    border: 2px solid var(--black);
+    border-radius: 0;
+    box-shadow: 0 3px 0 #9c7a1e, 0 5px 7px rgba(0, 0, 0, 0.3);
+    font-family: 'Oswald', 'Arial Narrow', sans-serif;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    padding: 2px 8px;
+    font-size: 0.6rem;
+  }
+  .exhibit-credits-button:active { transform: translateY(2px); box-shadow: 0 1px 0 #8a2119; }
+  .exhibit-credits-button:hover { color: var(--black); border-color: var(--black); }
+}
+
+/* ── DESKTOP (2026-07 rev3, site-match): ONE flexible row — button block
+   LEFT (shrinks), stats panel RIGHT (grows with its numbers). ERASE full
+   width on top of the block, CREDITS + AUDIO equal beneath, erase treatment
+   throughout. Stacking only at mobile. ── */
+@media (min-width: 641px) {
+  .exhibit-data { display: flex; flex-direction: row; align-items: stretch; gap: 1rem; max-width: none; margin-left: 0; }
+  .exhibit-desktop-controls {
+    flex: 0 1 250px;
+    min-width: 150px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-auto-rows: min-content;
+    gap: 10px;
+    align-content: start;
+    padding: 0;
+    margin: 0;
+    border: 0;
+    background: none;
+    width: auto;
+    white-space: normal;
+  }
+  .exhibit-stats-panel { flex: 1 1 auto; min-width: 0; }
+  .exhibit-desktop-controls-erase { grid-column: 1 / -1; grid-row: 1; height: 48px; width: 100%; max-width: none; min-width: 0; padding: 0 8px; }
+  .exhibit-desktop-controls-credits { grid-row: 2; grid-column: 1; }
+  .exhibit-desktop-controls-audio { grid-row: 2; grid-column: 2; }
+  .exhibit-desktop-controls-credits, .exhibit-desktop-controls-audio {
+    box-sizing: border-box;
+    height: 40px;
+    min-width: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 8px;
+    background-color: var(--atomic-red);
+    color: var(--white);
+    border: 2px solid var(--black);
+    border-radius: 0;
+    cursor: pointer;
+    font-family: 'Oswald', 'Arial Narrow', sans-serif;
+    font-weight: 600;
+    font-size: 0.72rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    box-shadow: 0 4px 0 #8a2119, 0 7px 10px rgba(0, 0, 0, 0.35);
+    transition: transform 0.12s ease, box-shadow 0.12s ease;
+  }
+  .exhibit-desktop-controls-credits:active, .exhibit-desktop-controls-audio:active {
+    transform: translateY(3px);
+    box-shadow: 0 1px 0 #8a2119, 0 2px 4px rgba(0, 0, 0, 0.3);
+  }
+}
+
+/* ── COLOR PASS (2026-07, site-match): yellow keys, RED sidings everywhere —
+   matching the erase treatment. ── */
+.needle-place-overlay {
+  font-family: 'Oswald', 'Arial Narrow', sans-serif;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  box-shadow: 0 4px 0 #8a2119, 0 7px 10px rgba(0, 0, 0, 0.35);
+  transition: transform 0.12s ease, box-shadow 0.12s ease, background-color 0.12s ease, color 0.12s ease;
+}
+.needle-place-overlay:active {
+  transform: translateY(3px);
+  box-shadow: 0 1px 0 #8a2119, 0 2px 4px rgba(0, 0, 0, 0.3);
+  background-color: var(--atomic-red);
+  color: var(--white);
+}
+@media (min-width: 641px) {
+  .exhibit-desktop-controls-credits, .exhibit-desktop-controls-audio {
+    background-color: var(--mustard);
+    color: var(--black);
+    box-shadow: 0 4px 0 #8a2119, 0 7px 10px rgba(0, 0, 0, 0.35);
+  }
+}
+@media (max-width: 600px) {
+  .exhibit-sound-toggle, .exhibit-audio-button { box-shadow: 0 4px 0 #8a2119, 0 7px 10px rgba(0, 0, 0, 0.35); }
+  .exhibit-sound-toggle:focus, .exhibit-sound-toggle:focus-visible,
+  .exhibit-audio-button:focus, .exhibit-audio-button:focus-visible { box-shadow: 0 4px 0 #8a2119, 0 7px 10px rgba(0, 0, 0, 0.35); }
+  .exhibit-credits-button { box-shadow: 0 3px 0 #8a2119, 0 5px 7px rgba(0, 0, 0, 0.3); }
+}
+
+/* ── PARITY PASS (2026-07, site-match): TAKE PHOTO in the button system;
+   gold divider between the key block and LIVE ESTIMATE ── */
+.needle-map-button-cluster .needle-take-photo {
+  font-family: 'Oswald', 'Arial Narrow', sans-serif;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  box-shadow: 0 4px 0 #8a2119, 0 7px 10px rgba(0, 0, 0, 0.35);
+  transition: transform 0.12s ease, box-shadow 0.12s ease, background-color 0.12s ease, color 0.12s ease;
+}
+.needle-map-button-cluster .needle-take-photo:active:not(:disabled) {
+  transform: translateY(3px);
+  box-shadow: 0 1px 0 #8a2119, 0 2px 4px rgba(0, 0, 0, 0.3);
+  background-color: var(--atomic-red);
+  color: var(--white);
+}
+@media (min-width: 641px) {
+  .exhibit-desktop-controls { border-right: 2px solid #F4D272; padding-right: 1rem; }
 }

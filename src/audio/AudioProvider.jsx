@@ -151,7 +151,7 @@ export function AudioProvider({ children }) {
     <AudioContext.Provider value={value}>
       <audio
         ref={musicAudioRef}
-        src="/audio/thrift-shop-8bit-cover-oscar.mp3"
+        src="./audio/thrift-shop-8bit-cover-oscar.mp3"
         preload="auto"
         loop
         playsInline
@@ -198,15 +198,6 @@ export function AudioProvider({ children }) {
                     aria-pressed={sfxEnabled}
                   >
                     {sfxEnabled ? "On" : "Off"}
-                  </button>
-                </div>
-                <div className="exhibit-audio-credits-wrap">
-                  <button
-                    type="button"
-                    className="exhibit-audio-see-credits"
-                    onClick={onSeeCredits}
-                  >
-                    See Credits
                   </button>
                 </div>
               </div>
