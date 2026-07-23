@@ -107,8 +107,10 @@ const LOGO_SRC = `${import.meta.env.BASE_URL || '/'}logo/logo.webp`;
 // Layers that should NOT sparkle (organic / ground — plaza + the three treelines)
 const GLIMMER_EXCLUDE = new Set(['1', '5', '9', '11']);
 // Layers that are STATIC in the deck (like the background): they occlude the
-// cursor but never lift or compress — the ground plane and the plaza/people.
-const DECK_STATIC = new Set(['ground', '1']);
+// cursor but never lift or compress — only the ground plane now. The
+// plaza/people layer ('1') joined the elastic deck (2026-07): it drags,
+// stretches and bounces like every other layer.
+const DECK_STATIC = new Set(['ground']);
 
 // Menu layers → their full-card art + the % the card is pushed DOWN at the start
 // so its (top-of-card) illustration lines up with that layer in the scene. From
