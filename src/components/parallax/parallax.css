@@ -51,9 +51,36 @@ body {
 /* portrait composition column — height-driven 9:16.
    wide screens → narrower than viewport, centered with lit bleed.
    portrait screens → wider than viewport, sides clipped by the stage. */
+/* ── DESKTOP BLEED — the scene's out-of-focus continuation beyond the
+   frame. A second copy of the frame's content, horizontally stretched so
+   each layer's edge colors smear across the full window, softened hard and
+   dimmed so the sharp frame reads as the focal plane. Non-interactive. ── */
+.parallax-bleed {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+.parallax-bleed-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%; /* 480×270 buffer upscaled — softness comes free */
+}
+@media (max-width: 700px) and (max-aspect-ratio: 3/5) {
+  .parallax-bleed { display: none; } /* phones: frame is full-bleed already */
+}
+
 .parallax-frame {
   position: relative;
-  height: 90%; /* composition sits at 90% with a clear margin all around */
+  /* LOCKED 9:16 at EVERY window size (2026-07): height-driven on wide
+     screens (the original 90% of viewport height), but when the window
+     narrows enough that a 90dvh-tall frame would be wider than the screen,
+     the WIDTH becomes the driver (100vw × 16/9) — the frame shrinks to fit
+     instead of overflowing. Overflow was cutting the art's sides and
+     inflating all cq-based chrome (menu cells crashing into the ✕) in the
+     in-between window band. 177.78vw = 100vw × 16/9. */
+  height: min(90dvh, 177.78vw);
   aspect-ratio: 9 / 16;
   margin-inline: auto;
   /* the frame is a true window: nothing is visible outside it (layers rising
@@ -67,7 +94,7 @@ body {
 /* MOBILE (2026-07): the experience fills the ENTIRE screen — no floating
    poster margins. Aspect unlocks to the device's own; the frame (and its
    doubled 2px gold border) runs edge to edge. */
-@media (max-width: 700px) {
+@media (max-width: 700px) and (max-aspect-ratio: 3/5) {
   .parallax-frame {
     height: 100%;
     width: 100%;

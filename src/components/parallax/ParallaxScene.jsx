@@ -104,6 +104,67 @@ const HINT_POINTS = [0, 0.95, 1.78];
 // mustard ink exactly. No-stars version — the sky already has the starfield.
 const LOGO_SRC = `${import.meta.env.BASE_URL || '/'}logo/logo.webp`;
 
+// ── DESKTOP BLEED v3: ONE small canvas (480×270, ~24fps), upscaled by
+// CSS. Base + swaying baked-soft beams + twinkling star plates are drawn
+// per frame — a single composited layer, no live filters, no full-screen
+// animated elements. rAF stops automatically in background tabs.
+function BleedCanvas() {
+  const ref = useRef(null);
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined;
+    if (window.matchMedia('(max-width: 700px) and (max-aspect-ratio: 3/5)').matches) return undefined; // true phones: bleed hidden
+    const canvas = ref.current;
+    if (!canvas) return undefined;
+    const W = 480, H = 270;
+    canvas.width = W; canvas.height = H;
+    const ctx = canvas.getContext('2d');
+    const BASE = import.meta.env.BASE_URL || '/';
+    const load = (name) => { const im = new Image(); im.src = `${BASE}parallax/${name}`; return im; };
+    const base = load('bleed-base.webp');
+    const beams = [];
+    const stars = [];
+    BACKGROUND_LAYERS.forEach((bg) => {
+      if (bg.spot) beams.push({ img: load(`bleed-beam-${bg.n}.webp`), spot: bg.spot });
+      if (bg.twinkle) bg.twinkle.forEach((part, i) => {
+        stars.push({ img: load(`bleed-star-${bg.n}-${'abcdefgh'[i]}.webp`), period: part.period * 1.6, delay: part.delay });
+      });
+    });
+    let raf = 0;
+    let last = 0;
+    const step = (ts) => {
+      raf = requestAnimationFrame(step);
+      if (ts - last < 41) return; // ~24fps is plenty for ambience
+      last = ts;
+      const t = ts / 1000;
+      ctx.clearRect(0, 0, W, H);
+      if (base.complete) ctx.drawImage(base, 0, 0, W, H);
+      for (const st of stars) {
+        if (!st.img.complete) continue;
+        ctx.globalAlpha = 0.18 + 0.72 * (0.5 + 0.5 * Math.sin((Math.PI * (t - st.delay)) / st.period));
+        ctx.drawImage(st.img, 0, 0, W, H);
+      }
+      ctx.globalAlpha = 1;
+      for (const bm of beams) {
+        if (!bm.img.complete) continue;
+        const { pivot, amp, period, delay, stretch = 1.9 } = bm.spot;
+        const px = pivot[0] * W;
+        const py = pivot[1] * H + H * 0.14; // lamp drop, as in the frame
+        const ang = ((amp * Math.PI) / 180) * Math.cos((Math.PI * (t - delay)) / period);
+        ctx.save();
+        ctx.translate(px, py);
+        ctx.rotate(ang);
+        ctx.scale(stretch, stretch);
+        ctx.translate(-px, -py);
+        ctx.drawImage(bm.img, 0, H * 0.14, W, H);
+        ctx.restore();
+      }
+    };
+    raf = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(raf);
+  }, []);
+  return <canvas ref={ref} className="parallax-bleed-canvas" aria-hidden="true" />;
+}
+
 // Layers that should NOT sparkle (organic / ground — plaza + the three treelines)
 const GLIMMER_EXCLUDE = new Set(['1', '5', '9', '11']);
 // Layers that are STATIC in the deck (like the background): they occlude the
@@ -869,6 +930,13 @@ export default function ParallaxScene({ motionGain = 1 }) {
           and the logo — now rides the narration crawl (see CRAWL_LINES).
           splitLetters + the .ico-* / .parallax-narration-* / .parallax-header
           / .parallax-logo styles are kept for reference/reuse elsewhere. */}
+
+      {/* ── DESKTOP BLEED (v3): one small canvas, upscaled — all motion
+          drawn by hand at ~24fps. Single composited layer; cannot tax the
+          page the way per-element animation did. */}
+      <div className="parallax-bleed" aria-hidden="true">
+        <BleedCanvas />
+      </div>
 
       <div className={`parallax-frame${deckOn ? ' deck-on' : ''}${openLayer ? ' card-mode' : ''}${pull ? ' deck-drag' : ''}`} ref={frameRef}>
           {/* ── Shared background plates + spotlights (13–18) ────

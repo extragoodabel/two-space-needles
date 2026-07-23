@@ -510,3 +510,26 @@ in `~/Desktop/Two Space Needles Game/two-space-needles`) is mounted SAME-DOMAIN:
 The whole app is self‑contained in `two-space-needles/` with all assets under
 `public/`. To ship: `git init` → push to GitHub → import on Vercel (auto‑detects
 Vite). No backend, no env vars, no external asset host.
+
+
+## STABLE CHECKPOINT — 2026-07-23 (tag: stable-v2)
+
+Site commit a6bd855 · game bundle index-DaWquxLn.js / index-ClMD5tKw.css
+(game source synced on the game-standalone branch, tag game-stable-v2).
+
+State at this checkpoint: live at twospaceneedles.org. Elastic deck home
+screen (stitched drag + spring release, plaza included; menu-only page
+navigation). Five pages with card menus + push-button system. Kit subscribe
+live on Get Involved. Game mounted from a TRUE SOURCE BUILD — no
+post-processed bundles (the index-tsnskin*/tsnlive* files in
+public/game/assets are dead weight, kept only because past sessions could
+not delete; safe to rm). Game has: silhouette needle selection (pixel
+capsule hit-test, needleIdAtPoint in MapScene), drag-and-release mobile
+placement, native audio modal, desktop control row (Erase over
+Credits+Audio, gold divider, beside the stats panel), yellow keys with red
+3D sidings, mobile 60/40 button row.
+
+Workflow reminder for game changes: edit game SOURCE (Desktop repo) → user
+runs `npm run build` there → mount dist into public/game (assets +
+index.html) → user pushes the SITE repo. Never push the game repo to main
+(same remote as the site!) — its branch is game-standalone.
