@@ -215,6 +215,10 @@ export const INSERTS = [
         a: 'We understand the concern that doubling our Space Needles may bring too much attention to Seattle, and threaten to over-tax our city’s infrastructure and traffic. In that event, we can build a third Space Needle further outside the city limits, from where we can lure tourists to view both Space Needles from a comfortable distance.',
       },
       {
+        q: 'Why not simply build a Space Needle-sized mirror next to the current Space Needle?',
+        a: 'The mirror proposal solves the view from the top by destroying the view from everywhere behind the mirror. At any given moment, most people admiring the Space Needle are not on the Space Needle. A mirror therefore produces a net loss of observed Space Needles. We have run the numbers. To the campaigns championing a Space Needle-sized mirror, we say plainly: we agree in principle. We disagree in execution.',
+      },
+      {
         q: 'Do you have questions that are not answered here?',
         a: 'Get in touch.',
       },
