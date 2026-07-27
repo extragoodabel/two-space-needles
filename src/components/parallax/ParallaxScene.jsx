@@ -167,7 +167,7 @@ function BleedCanvas() {
 
 // ── JIMOTHY (2026-07): the campaign's raccoon. Crosses the frame left to
 // right at the 1-minute mark, then once every five minutes (6:00, 11:00, …).
-// Non-interactive, reduced-motion aware. Art: public/jimothy/jimothy.gif
+// Non-interactive, reduced-motion aware. Art: public/jimothy/jimothy2.gif
 function Jimothy() {
   const [walking, setWalking] = useState(false);
   useEffect(() => {
@@ -190,7 +190,7 @@ function Jimothy() {
       <span className="jimothy-shadow" />
       <img
         className="jimothy-img"
-        src={`${import.meta.env.BASE_URL || '/'}jimothy/jimothy.gif`}
+        src={`${import.meta.env.BASE_URL || '/'}jimothy/jimothy2.gif`}
         alt=""
         draggable="false"
       />
