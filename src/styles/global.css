@@ -890,10 +890,3 @@ ul, ol { list-style: none; }
   .insert-overlay { padding: 1rem; }
 }
 
-/* ── Reduced motion ───────────────────────────────────────── */
-@media (prefers-reduced-motion: reduce) {
-  .folder, .folder__cover, .insert-overlay, .insert {
-    transition: none !important;
-    animation: none !important;
-  }
-}

@@ -171,18 +171,32 @@ function BleedCanvas() {
 function Jimothy() {
   const [walking, setWalking] = useState(false);
   useEffect(() => {
-    let interval;
+    // ABSOLUTE schedule (2026-07): crossings are anchored to the moment the
+    // PAGE opened (performance.now() = ms since navigation), not to when
+    // this component happened to mount — 1:00, then every 90s (2:30, 4:00,
+    // …), identical on desktop and mobile, immune to remounts.
+    const FIRST = 60 * 1000;
+    const EVERY = 90 * 1000;
+    // PRELOAD: the gif is ~880KB — fetch it at page open so the FIRST
+    // crossing isn't invisible on slower (mobile) connections while the
+    // browser races to download him mid-walk
+    const preload = new Image();
+    preload.src = `${import.meta.env.BASE_URL || '/'}jimothy/jimothy2.gif`;
     let walkT;
+    let next = FIRST;
+    while (performance.now() > next) next += EVERY; // if we woke late, skip what was missed
     const cross = () => {
       setWalking(true);
       clearTimeout(walkT);
       walkT = setTimeout(() => setWalking(false), 3200); // 3s crossing + teardown
     };
-    const first = setTimeout(() => {
-      cross();
-      interval = setInterval(cross, 90 * 1000); // every 90 seconds thereafter
-    }, 60 * 1000); // first crossing at 1:00
-    return () => { clearTimeout(first); clearInterval(interval); clearTimeout(walkT); };
+    const tick = setInterval(() => {
+      if (performance.now() >= next) {
+        next += EVERY;
+        cross();
+      }
+    }, 500);
+    return () => { clearInterval(tick); clearTimeout(walkT); };
   }, []);
   if (!walking) return null;
   return (

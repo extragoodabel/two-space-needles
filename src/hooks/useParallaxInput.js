@@ -89,10 +89,6 @@ export function useParallaxInput(
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
-    const reduce =
-      typeof window !== 'undefined' &&
-      window.matchMedia &&
-      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
     // `commit` may be a single run (array of segments) or several independent
     // runs (array of arrays). Normalize to an array of runs. Each run self-drives
@@ -137,7 +133,7 @@ export function useParallaxInput(
 
       const t = target.current;
       const c = current.current;
-      const next = reduce ? t : c + (t - c) * smoothing;
+      const next = c + (t - c) * smoothing;
       const settled = Math.abs(t - next) < 0.0004 && !committing.current;
       current.current = settled ? t : next;
       setProgress(current.current);

@@ -925,9 +925,6 @@ body {
   from { transform: translateX(0); }
   to   { transform: translateX(560%); } /* clears the far edge (24% wide) */
 }
-@media (prefers-reduced-motion: reduce) {
-  .jimothy { display: none; }
-}
 
 /* sparkle overlay — sits above the moving layers, below the atmospheric film */
 .parallax-glimmers {
@@ -983,9 +980,6 @@ body {
   75%  { transform: translateY(55%) scaleX(-1); }  /* bottom */
   100% { transform: translateY(55%) scaleX(-1); }  /* paused at the bottom */
 }
-@media (prefers-reduced-motion: reduce) {
-  .elevator-front { animation: none; transform: translateY(30%) scaleX(-1); }
-}
 
 /* BACK needle elevator — same masked-travel idea, band positions remapped for
    the smaller/repositioned back needle; NOT flipped; +1s extra pause at the top
@@ -1005,9 +999,6 @@ body {
   75.7% { transform: translateY(20%); }  /* bottom (~9s down) */
   100%  { transform: translateY(20%); }  /* paused at the bottom (~9s) */
 }
-@media (prefers-reduced-motion: reduce) {
-  .elevator-back { animation: none; transform: translateY(0); }
-}
 
 /* idle attract wave — each layer's container bounces up and settles (the
    per-layer animation-delay, set inline, staggers it front → back). Runs on the
@@ -1021,9 +1012,6 @@ body {
   55%  { transform: translateY(0.8%); }
   78%  { transform: translateY(-0.3%); }
   100% { transform: translateY(0); }
-}
-@media (prefers-reduced-motion: reduce) {
-  .parallax-layer.rippling { animation: none; }
 }
 
 /* every layer fills the frame and is stacked by z-index */
@@ -1107,9 +1095,6 @@ body {
   100% { opacity: 1; filter: brightness(1.2); }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .parallax-star { animation: none; opacity: 1; }
-}
 
 @keyframes searchlight-swing {
   from { transform: rotate(calc(-1 * var(--spot-amp))) scale(var(--spot-stretch)); }
@@ -1177,9 +1162,6 @@ body {
   50%      { transform: rotate(-135deg) translate(3px, 3px); opacity: 1; }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .parallax-hint-arrow { animation: none; transform: rotate(-135deg); }
-}
 
 /* ── Chapter tabs (scrollytelling index) ──────────────────────
    Printed civic tabs that fade in as each chapter is reached and
@@ -1233,9 +1215,6 @@ body {
 @keyframes card-sink {
   from { opacity: 1; transform: translateY(0) scale(1); }
   to   { opacity: 0; transform: translateY(48px) scale(0.965); }
-}
-@media (prefers-reduced-motion: reduce) {
-  .card-reader, .card-reader.is-closing { animation: none; }
 }
 
 .card-reader-scroll {
@@ -1510,9 +1489,5 @@ body {
   0%   { opacity: 0; filter: blur(16px); transform: translateY(0.32em) scale(1.5); }
   60%  { opacity: 1; filter: blur(4px); }
   100% { opacity: 1; filter: blur(0); transform: translateY(0) scale(1); }
-}
-@media (prefers-reduced-motion: reduce) {
-  .parallax-header { animation: none; }
-  .ico-letter { animation: none; opacity: 1; filter: none; transform: none; }
 }
 
