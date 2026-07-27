@@ -165,6 +165,39 @@ function BleedCanvas() {
   return <canvas ref={ref} className="parallax-bleed-canvas" aria-hidden="true" />;
 }
 
+// ── JIMOTHY (2026-07): the campaign's raccoon. Crosses the frame left to
+// right at the 1-minute mark, then once every five minutes (6:00, 11:00, …).
+// Non-interactive, reduced-motion aware. Art: public/jimothy/jimothy.gif
+function Jimothy() {
+  const [walking, setWalking] = useState(false);
+  useEffect(() => {
+    let interval;
+    let walkT;
+    const cross = () => {
+      setWalking(true);
+      clearTimeout(walkT);
+      walkT = setTimeout(() => setWalking(false), 3200); // 3s crossing + teardown
+    };
+    const first = setTimeout(() => {
+      cross();
+      interval = setInterval(cross, 5 * 60 * 1000); // every 5 minutes thereafter
+    }, 90 * 1000); // first crossing at 1:30
+    return () => { clearTimeout(first); clearInterval(interval); clearTimeout(walkT); };
+  }, []);
+  if (!walking) return null;
+  return (
+    <div className="jimothy" aria-hidden="true">
+      <span className="jimothy-shadow" />
+      <img
+        className="jimothy-img"
+        src={`${import.meta.env.BASE_URL || '/'}jimothy/jimothy.gif`}
+        alt=""
+        draggable="false"
+      />
+    </div>
+  );
+}
+
 // Layers that should NOT sparkle (organic / ground — plaza + the three treelines)
 const GLIMMER_EXCLUDE = new Set(['1', '5', '9', '11']);
 // Layers that are STATIC in the deck (like the background): they occlude the
@@ -1425,6 +1458,8 @@ export default function ParallaxScene({ motionGain = 1 }) {
               </div>
             );
           })}
+
+          <Jimothy />
 
           {/* warm glints that sparkle across the illustrated objects as the
               scene catches the light (skips plaza + treelines) */}

@@ -894,6 +894,41 @@ body {
 .parallax-cardmenu-link:focus,
 .parallax-cardmenu-link:focus-visible { outline: none; }
 
+/* ── JIMOTHY — brief left-to-right crossing along the frame's foot ── */
+.jimothy {
+  position: absolute;
+  bottom: 1.5%;
+  left: -28%; /* fully offstage at rest (2x size) */
+  width: 24%;
+  z-index: 1040; /* above the scene, below the atmosphere film + menus */
+  pointer-events: none;
+  animation: jimothy-cross 3s linear forwards;
+}
+.jimothy-img {
+  display: block;
+  width: 100%;
+  height: auto;
+  position: relative; /* rides above the shadow */
+}
+/* soft oval ground shadow just below/behind him */
+.jimothy-shadow {
+  position: absolute;
+  left: 12%; /* 10% narrower */
+  right: 12%;
+  bottom: calc(3.5% + 25px); /* tucked up under his body — legs plant into it */
+  height: 10%; /* 10% shorter */
+  border-radius: 50%;
+  /* darker + HARDER: solid core, tight falloff */
+  background: radial-gradient(ellipse at center, rgba(0, 0, 0, 0.85) 0%, rgba(0, 0, 0, 0.85) 48%, rgba(0, 0, 0, 0) 76%);
+}
+@keyframes jimothy-cross {
+  from { transform: translateX(0); }
+  to   { transform: translateX(560%); } /* clears the far edge (24% wide) */
+}
+@media (prefers-reduced-motion: reduce) {
+  .jimothy { display: none; }
+}
+
 /* sparkle overlay — sits above the moving layers, below the atmospheric film */
 .parallax-glimmers {
   position: absolute;
