@@ -180,7 +180,7 @@ function Jimothy() {
     };
     const first = setTimeout(() => {
       cross();
-      interval = setInterval(cross, 5 * 60 * 1000); // every 5 minutes thereafter
+      interval = setInterval(cross, 90 * 1000); // every 90 seconds thereafter
     }, 60 * 1000); // first crossing at 1:00
     return () => { clearTimeout(first); clearInterval(interval); clearTimeout(walkT); };
   }, []);
