@@ -212,6 +212,46 @@ function Jimothy() {
   );
 }
 
+// ── BASEJUMPERS (2026-07): full-frame overlay gif — two jumpers leap from
+// the back needle and parachute off. Registered to the RESTING composition,
+// so it only plays when the scene is assembled and unshifted (no menu
+// compression, no card). One ~2.5s pass per showing; the query param forces
+// the gif to restart from frame one each time.
+// SCHEDULE: first jump 8s after the home screen locks in (menu button
+// arrived), then every minute — and ONLY while on the home screen (ticks
+// during menus/cards/game are skipped). Re-anchors if the splash replays.
+function Basejumpers({ ready, active }) {
+  const [showing, setShowing] = useState(0);
+  const activeRef = useRef(active);
+  activeRef.current = active;
+  useEffect(() => {
+    if (!ready) return undefined;
+    let hideT;
+    let interval;
+    const jump = () => {
+      if (!activeRef.current) return; // not on the home screen — skip
+      setShowing(Date.now());
+      clearTimeout(hideT);
+      hideT = setTimeout(() => setShowing(0), 2600);
+    };
+    const first = setTimeout(() => {
+      jump();
+      interval = setInterval(jump, 60 * 1000);
+    }, 8 * 1000);
+    return () => { clearTimeout(first); clearInterval(interval); clearTimeout(hideT); };
+  }, [ready]);
+  if (!showing) return null;
+  return (
+    <img
+      className="basejumpers"
+      src={`${import.meta.env.BASE_URL || '/'}basejumpers.gif?${showing}`}
+      alt=""
+      aria-hidden="true"
+      draggable="false"
+    />
+  );
+}
+
 // Layers that should NOT sparkle (organic / ground — plaza + the three treelines)
 const GLIMMER_EXCLUDE = new Set(['1', '5', '9', '11']);
 // Layers that are STATIC in the deck (like the background): they occlude the
@@ -1474,6 +1514,7 @@ export default function ParallaxScene({ motionGain = 1 }) {
           })}
 
           <Jimothy />
+          <Basejumpers ready={menuOn} active={deckOn && !menuOpen && !openLayer && !gameOpen} />
 
           {/* warm glints that sparkle across the illustrated objects as the
               scene catches the light (skips plaza + treelines) */}

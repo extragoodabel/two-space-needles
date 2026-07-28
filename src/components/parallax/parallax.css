@@ -926,6 +926,18 @@ body {
   to   { transform: translateX(560%); } /* clears the far edge (24% wide) */
 }
 
+/* ── BASEJUMPERS — full-frame one-shot overlay, registered to the resting
+   composition ── */
+.basejumpers {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: 1045; /* above the scene, below the atmosphere film + menus */
+  pointer-events: none;
+}
+
 /* sparkle overlay — sits above the moving layers, below the atmospheric film */
 .parallax-glimmers {
   position: absolute;
